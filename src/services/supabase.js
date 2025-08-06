@@ -66,7 +66,7 @@ export const supabaseHelpers = {
 
       // Upload vers le bucket principal
       const { data, error } = await supabase.storage
-        .from('cooking-sessions')  // Un seul bucket pour tout
+        .from('plate-up')  // Un seul bucket pour tout
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: type === 'avatar', // Remplacer l'avatar existant
@@ -77,7 +77,7 @@ export const supabaseHelpers = {
 
       // Obtenir l'URL publique
       const { data: { publicUrl } } = supabase.storage
-        .from('cooking-sessions')
+        .from('plate-up')
         .getPublicUrl(data.path)
 
       return { 
@@ -120,7 +120,7 @@ export const supabaseHelpers = {
     try {
       // Lister les fichiers avatars de l'utilisateur
       const { data: files } = await supabase.storage
-        .from('cooking-sessions')
+        .from('plate-up')
         .list('avatars', {
           search: userId
         })
@@ -128,7 +128,7 @@ export const supabaseHelpers = {
       if (files?.length > 0) {
         const filesToDelete = files.map(file => `avatars/${file.name}`)
         await supabase.storage
-          .from('cooking-sessions')
+          .from('plate-up')
           .remove(filesToDelete)
       }
     } catch (error) {
@@ -141,7 +141,7 @@ export const supabaseHelpers = {
   async deleteImage(path) {
     try {
       const { error } = await supabase.storage
-        .from('cooking-sessions')
+        .from('plate-up')
         .remove([path])
       
       if (error) throw error
@@ -156,7 +156,7 @@ export const supabaseHelpers = {
   getAvatarUrl(userId, timestamp = Date.now()) {
     // URL avec cache busting pour forcer le refresh
     const { data: { publicUrl } } = supabase.storage
-      .from('cooking-sessions')
+      .from('plate-up')
       .getPublicUrl(`avatars/${userId}-${timestamp}.jpg`)
     return publicUrl
   },
@@ -167,7 +167,7 @@ export const supabaseHelpers = {
       const folder = type === 'session' ? `sessions/${userId}` : `avatars`
       
       const { data: files, error } = await supabase.storage
-        .from('cooking-sessions')
+        .from('plate-up')
         .list(folder, {
           sortBy: { column: 'created_at', order: 'desc' }
         })
@@ -178,7 +178,7 @@ export const supabaseHelpers = {
         name: file.name,
         path: `${folder}/${file.name}`,
         url: supabase.storage
-          .from('cooking-sessions')
+          .from('plate-up')
           .getPublicUrl(`${folder}/${file.name}`).data.publicUrl,
         size: file.metadata?.size,
         createdAt: file.created_at
