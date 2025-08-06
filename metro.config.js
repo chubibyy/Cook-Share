@@ -18,7 +18,4 @@ config.resolver.alias = {
   '@navigation': path.resolve(__dirname, 'src/navigation'),
 }
 
-// SUPPRIMER la configuration de cache problématique
-// config.cacheStores = [...] // ❌ Cette ligne causait l'erreur
-
 module.exports = config
