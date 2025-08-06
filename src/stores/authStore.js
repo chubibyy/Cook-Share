@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { authService } from '../services/auth'
-import { supabaseHelpers } from '../services/supabase'
+import { supabase,supabaseHelpers } from '../services/supabase'
 
 export const useAuthStore = create(
   persist(
