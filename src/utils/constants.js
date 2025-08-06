@@ -182,90 +182,44 @@ export const LEVELS = {
   }
 }
 
-// Types de cuisine avec couleurs associées
-export const CUISINE_TYPES = [
-  { name: 'Française', color: '#E74C3C', emoji: '🇫🇷' },
-  { name: 'Italienne', color: '#27AE60', emoji: '🇮🇹' },
-  { name: 'Japonaise', color: '#E74C3C', emoji: '🇯🇵' },
-  { name: 'Chinoise', color: '#F39C12', emoji: '🇨🇳' },
-  { name: 'Indienne', color: '#E67E22', emoji: '🇮🇳' },
-  { name: 'Mexicaine', color: '#27AE60', emoji: '🇲🇽' },
-  { name: 'Thaï', color: '#8E44AD', emoji: '🇹🇭' },
-  { name: 'Méditerranéenne', color: '#3498DB', emoji: '🌊' },
-  { name: 'Végétarienne', color: '#2ECC71', emoji: '🌱' },
-  { name: 'Vegan', color: '#27AE60', emoji: '🌿' },
-  { name: 'Sans Gluten', color: '#F1C40F', emoji: '🌾' },
-  { name: 'Desserts', color: '#E91E63', emoji: '🍰' },
-  { name: 'Pâtisserie', color: '#9C27B0', emoji: '🧁' },
-  { name: 'Street Food', color: '#FF5722', emoji: '🌮' },
-  { name: 'Fusion', color: '#607D8B', emoji: '🌐' }
-]
-
-// Niveaux de difficulté avec design gamifié
-export const DIFFICULTY_LEVELS = {
-  1: { 
-    name: 'Très facile', 
-    icon: '😊', 
-    color: '#00B894',
-    description: 'Parfait pour débuter'
-  },
-  2: { 
-    name: 'Facile', 
-    icon: '🙂', 
-    color: '#74B9FF',
-    description: 'Quelques bases requises'
-  },
-  3: { 
-    name: 'Moyen', 
-    icon: '😐', 
-    color: '#FDCB6E',
-    description: 'Technique intermédiaire'
-  },
-  4: { 
-    name: 'Difficile', 
-    icon: '😤', 
-    color: '#E17055',
-    description: 'Pour les confirmés'
-  },
-  5: { 
-    name: 'Expert', 
-    icon: '🤯', 
-    color: '#E74C3C',
-    description: 'Réservé aux masters'
-  }
+// Helper functions
+export const getColorOpacity = (color, opacity) => {
+  const hex = color.replace('#', '')
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`
 }
 
+export const getLevelFromXP = (xp) => {
+  const levels = Object.keys(LEVELS).reverse()
+  for (let level of levels) {
+    if (xp >= LEVELS[level].xp) {
+      return LEVELS[level]
+    }
+  }
+  return LEVELS[1]
+}
+
+export const getProgressToNextLevel = (xp) => {
+  const currentLevel = getLevelFromXP(xp)
+  const currentLevelNumber = Object.keys(LEVELS).find(
+    key => LEVELS[key] === currentLevel
+  )
+  const nextLevel = LEVELS[parseInt(currentLevelNumber) + 1]
+  
+  if (!nextLevel) return { progress: 1, xpToNext: 0 }
+  
+  const xpInCurrentLevel = xp - currentLevel.xp
+  const xpRequiredForNext = nextLevel.xp - currentLevel.xp
+  const progress = xpInCurrentLevel / xpRequiredForNext
+  const xpToNext = nextLevel.xp - xp
+  
+  return { progress, xpToNext, nextLevel }
+}
 // Animations - Durées standardisées
 export const ANIMATIONS = {
   fast: 200,
   normal: 300,
   slow: 500
 }
-
-// Breakpoints pour responsive (si support web)
-export const BREAKPOINTS = {
-  sm: 576,
-  md: 768,
-  lg: 992,
-  xl: 1200
-}
-
-// Tailles d'écran mobile
-export const SCREEN_SIZES = {
-  small: 375,  // iPhone SE
-  medium: 390, // iPhone 14
-  large: 428   // iPhone 14 Plus
-}
-
-// Configuration de l'app
-export const APP_CONFIG = {
-  name: 'PlateUp',
-  tagline: 'Dress your plate, share the taste',
-  version: '1.0.0',
-  maxImageSize: 5 * 1024 * 1024, // 5MB
-  supportedImageFormats: ['jpg', 'jpeg', 'png', 'webp'],
-  maxSessionTitle: 100,
-  maxBio: 250,
-  maxIngredients: 20
-}
-

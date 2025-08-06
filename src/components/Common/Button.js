@@ -4,13 +4,9 @@ import {
   TouchableOpacity, 
   Text, 
   StyleSheet, 
-  ActivityIndicator,
-  Dimensions 
+  ActivityIndicator 
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
-
-const { width: screenWidth } = Dimensions.get('window')
 
 const Button = ({
   title,
@@ -20,8 +16,6 @@ const Button = ({
   loading = false,
   disabled = false,
   fullWidth = false,
-  leftIcon,
-  rightIcon,
   style,
   textStyle,
   ...props
@@ -43,9 +37,14 @@ const Button = ({
     textStyle
   ]
 
-  const renderContent = () => (
-    <>
-      {leftIcon && <span style={styles.leftIcon}>{leftIcon}</span>}
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      style={buttonStyles}
+      activeOpacity={0.8}
+      {...props}
+    >
       {loading ? (
         <ActivityIndicator 
           size={size === 'small' ? 16 : 20} 
@@ -54,38 +53,6 @@ const Button = ({
       ) : (
         <Text style={textStyles}>{title}</Text>
       )}
-      {rightIcon && <span style={styles.rightIcon}>{rightIcon}</span>}
-    </>
-  )
-
-  if (variant === 'primary') {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={disabled || loading}
-        style={[styles.base, styles[size], fullWidth && styles.fullWidth]}
-        {...props}
-      >
-        <LinearGradient
-          colors={disabled ? [COLORS.disabled, COLORS.disabled] : [COLORS.primary, COLORS.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.gradient, styles[size]]}
-        >
-          {renderContent()}
-        </LinearGradient>
-      </TouchableOpacity>
-    )
-  }
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      style={buttonStyles}
-      {...props}
-    >
-      {renderContent()}
     </TouchableOpacity>
   )
 }
@@ -132,15 +99,6 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   
-  // Gradient style
-  gradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIUS.base,
-  },
-  
   // États
   disabled: {
     backgroundColor: COLORS.disabled,
@@ -180,15 +138,6 @@ const styles = StyleSheet.create({
   textDisabled: {
     color: COLORS.textMuted,
   },
-  
-  // Icônes
-  leftIcon: {
-    marginRight: SPACING.sm,
-  },
-  rightIcon: {
-    marginLeft: SPACING.sm,
-  }
 })
 
 export default Button
-

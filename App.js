@@ -1,74 +1,141 @@
-// App.js - Test détaillé des variables
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Constants from 'expo-constants';
+// App.js - Test du Design System
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import Button from './src/components/common/Button';
+import { COLORS, SPACING, TYPOGRAPHY } from './src/utils/constants';
+
+const Tab = createBottomTabNavigator();
+
+function HomeScreen() {
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🎨 Design System Test</Text>
+        
+        <Text style={styles.subtitle}>Buttons</Text>
+        <Button title="Primary Button" onPress={() => alert('Primary!')} />
+        <View style={styles.spacer} />
+        
+        <Button 
+          title="Secondary Button" 
+          variant="secondary" 
+          onPress={() => alert('Secondary!')} 
+        />
+        <View style={styles.spacer} />
+        
+        <Button 
+          title="Outline Button" 
+          variant="outline" 
+          onPress={() => alert('Outline!')} 
+        />
+        <View style={styles.spacer} />
+        
+        <Button 
+          title="Loading..." 
+          loading={true} 
+        />
+      </View>
+    </ScrollView>
+  );
+}
+
+function ChallengesScreen() {
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.title}>🎯 Challenges</Text>
+      <Text style={styles.subtitle}>Bientôt disponible</Text>
+    </View>
+  );
+}
+
+function CreateScreen() {
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.title}>➕ Create</Text>
+      <Text style={styles.subtitle}>Bientôt disponible</Text>
+    </View>
+  );
+}
+
+function ProfileScreen() {
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.title}>👤 Profile</Text>
+      <Text style={styles.subtitle}>Bientôt disponible</Text>
+    </View>
+  );
+}
 
 export default function App() {
-  const [status, setStatus] = useState('Test en cours...');
-
-  useEffect(() => {
-    const testEnvVars = () => {
-      console.log('=== DEBUG ENV VARS ===');
-      console.log('EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-      console.log('EXPO_PUBLIC_SUPABASE_ANON_KEY:', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'Présente' : 'Manquante');
-      
-      const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!url) {
-        setStatus('❌ EXPO_PUBLIC_SUPABASE_URL manquante');
-        return;
-      }
-      
-      if (!key) {
-        setStatus('❌ EXPO_PUBLIC_SUPABASE_ANON_KEY manquante');
-        return;
-      }
-      
-      if (!url.includes('supabase.co')) {
-        setStatus('❌ URL Supabase invalide');
-        return;
-      }
-      
-      setStatus('✅ Variables Supabase OK !');
-    };
-
-    testEnvVars();
-  }, []);
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🍽️ PlateUp</Text>
-      <Text style={styles.status}>{status}</Text>
-      <Text style={styles.debug}>
-        Check console pour détails
-      </Text>
-    </View>
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={{
+          tabBarStyle: styles.tabBar,
+          tabBarActiveTintColor: COLORS.primary,
+          tabBarInactiveTintColor: COLORS.textMuted,
+          headerShown: false,
+        }}
+      >
+        <Tab.Screen 
+          name="Home" 
+          component={HomeScreen}
+          options={{
+            tabBarLabel: 'Accueil',
+            tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text>
+          }}
+        />
+        <Tab.Screen name="Challenges" component={ChallengesScreen} />
+        <Tab.Screen name="Create" component={CreateScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  screen: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FF6B6B',
-    padding: 20,
+    backgroundColor: COLORS.background,
+  },
+  section: {
+    padding: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.sizes.xxl,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.lg,
+    textAlign: 'center',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 20,
+    fontSize: TYPOGRAPHY.sizes.xxxl,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
   },
-  status: {
-    fontSize: 18,
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 20,
+  subtitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
   },
-  debug: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  spacer: {
+    height: SPACING.md,
+  },
+  tabBar: {
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    height: 80,
+    paddingBottom: 10,
   }
 });
