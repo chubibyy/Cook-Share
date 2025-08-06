@@ -32,7 +32,7 @@ const Badge = ({
   )
 }
 
-const badgeStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   base: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs / 2,

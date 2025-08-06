@@ -96,7 +96,7 @@ const Input = ({
   )
 }
 
-const inputStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   wrapper: {
     marginVertical: SPACING.xs,
   },

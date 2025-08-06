@@ -178,7 +178,7 @@ const ClubCard = ({
   )
 }
 
-const clubStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   clubCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,

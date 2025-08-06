@@ -52,7 +52,7 @@ const LoadingSpinner = ({
   )
 }
 
-const spinnerStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',

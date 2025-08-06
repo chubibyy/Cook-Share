@@ -89,7 +89,7 @@ const badgeTextSizes = {
   xl: { fontSize: 16 }
 }
 
-const avatarStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     position: 'relative',
   },

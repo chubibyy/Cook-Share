@@ -197,7 +197,7 @@ const UserCard = ({
   )
 }
 
-const userStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   // Version compacte
   userCardCompact: {
     flexDirection: 'row',

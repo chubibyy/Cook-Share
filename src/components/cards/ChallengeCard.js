@@ -138,7 +138,7 @@ const ChallengeCard = ({
   )
 }
 
-const challengeStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
