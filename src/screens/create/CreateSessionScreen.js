@@ -192,10 +192,9 @@ const CreateSessionScreen = ({ navigation }) => {
       // Upload de l'image
       let photoUrl = null
       if (formData.photo) {
-        const { url } = await supabaseHelpers.uploadImage(
+        const { url } = await supabaseHelpers.uploadSessionImage(
           formData.photo,
-          'cooking-sessions',
-          `${user.id}/sessions`
+          user.id
         )
         photoUrl = url
       }

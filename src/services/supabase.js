@@ -23,18 +23,53 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Helper functions pour les requêtes communes
 export const supabaseHelpers = {
-  // Upload d'image avec optimisation
-  async uploadImage(file, bucket = 'cooking-sessions', path) {
+  // Upload d'image générique avec types (VERSION INTÉGRÉE)
+  async uploadImage(file, type = 'session', userId = null, additionalPath = '') {
     try {
       const fileExt = file.name?.split('.').pop() || 'jpg'
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = path ? `${path}/${fileName}` : fileName
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(2)
+      
+      let filePath
+      
+      switch (type) {
+        case 'avatar':
+          // Avatars utilisateurs : avatars/user-123.jpg
+          filePath = `avatars/${userId || 'anonymous'}-${timestamp}.${fileExt}`
+          break
+          
+        case 'session':
+          // Sessions culinaires : sessions/user-123/session-456.jpg
+          filePath = `sessions/${userId}/${timestamp}-${randomId}.${fileExt}`
+          break
+          
+        case 'club-avatar':
+          // Avatars de clubs : clubs/club-123-avatar.jpg
+          filePath = `clubs/${additionalPath}-avatar-${timestamp}.${fileExt}`
+          break
+          
+        case 'club-cover':
+          // Couvertures de clubs : clubs/club-123-cover.jpg
+          filePath = `clubs/${additionalPath}-cover-${timestamp}.${fileExt}`
+          break
+          
+        case 'challenge':
+          // Images de challenges : challenges/challenge-123.jpg
+          filePath = `challenges/${additionalPath || 'challenge'}-${timestamp}.${fileExt}`
+          break
+          
+        default:
+          // Fallback pour ancien code - compatibilité
+          const fileName = `${timestamp}-${randomId}.${fileExt}`
+          filePath = additionalPath ? `${additionalPath}/${fileName}` : fileName
+      }
 
+      // Upload vers le bucket principal
       const { data, error } = await supabase.storage
-        .from(bucket)
+        .from('cooking-sessions')  // Un seul bucket pour tout
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: type === 'avatar', // Remplacer l'avatar existant
           contentType: file.type || 'image/jpeg'
         })
 
@@ -42,21 +77,71 @@ export const supabaseHelpers = {
 
       // Obtenir l'URL publique
       const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
+        .from('cooking-sessions')
         .getPublicUrl(data.path)
 
-      return { url: publicUrl, path: data.path }
+      return { 
+        url: publicUrl, 
+        path: data.path,
+        type,
+        fileName: filePath
+      }
     } catch (error) {
       console.error('Erreur upload image:', error)
       throw error
     }
   },
 
-  // Supprimer une image
-  async deleteImage(path, bucket = 'cooking-sessions') {
+  // Upload spécifique avatar utilisateur
+  async uploadAvatar(file, userId) {
+    // Supprimer l'ancien avatar d'abord
+    await this.deleteOldAvatar(userId)
+    
+    return this.uploadImage(file, 'avatar', userId)
+  },
+
+  // Upload spécifique session culinaire  
+  async uploadSessionImage(file, userId) {
+    return this.uploadImage(file, 'session', userId)
+  },
+
+  // Upload spécifique club
+  async uploadClubImage(file, clubId, imageType = 'avatar') {
+    return this.uploadImage(file, `club-${imageType}`, null, clubId)
+  },
+
+  // Upload spécifique challenge
+  async uploadChallengeImage(file, challengeId) {
+    return this.uploadImage(file, 'challenge', null, challengeId)
+  },
+
+  // Supprimer ancien avatar
+  async deleteOldAvatar(userId) {
+    try {
+      // Lister les fichiers avatars de l'utilisateur
+      const { data: files } = await supabase.storage
+        .from('cooking-sessions')
+        .list('avatars', {
+          search: userId
+        })
+      
+      if (files?.length > 0) {
+        const filesToDelete = files.map(file => `avatars/${file.name}`)
+        await supabase.storage
+          .from('cooking-sessions')
+          .remove(filesToDelete)
+      }
+    } catch (error) {
+      console.error('Erreur suppression ancien avatar:', error)
+      // Ne pas faire échouer l'upload pour ça
+    }
+  },
+
+  // Supprimer une image par path
+  async deleteImage(path) {
     try {
       const { error } = await supabase.storage
-        .from(bucket)
+        .from('cooking-sessions')
         .remove([path])
       
       if (error) throw error
@@ -64,6 +149,43 @@ export const supabaseHelpers = {
     } catch (error) {
       console.error('Erreur suppression image:', error)
       throw error
+    }
+  },
+
+  // Obtenir l'URL d'un avatar par userId
+  getAvatarUrl(userId, timestamp = Date.now()) {
+    // URL avec cache busting pour forcer le refresh
+    const { data: { publicUrl } } = supabase.storage
+      .from('cooking-sessions')
+      .getPublicUrl(`avatars/${userId}-${timestamp}.jpg`)
+    return publicUrl
+  },
+
+  // Obtenir toutes les images d'un utilisateur
+  async getUserImages(userId, type = 'session') {
+    try {
+      const folder = type === 'session' ? `sessions/${userId}` : `avatars`
+      
+      const { data: files, error } = await supabase.storage
+        .from('cooking-sessions')
+        .list(folder, {
+          sortBy: { column: 'created_at', order: 'desc' }
+        })
+
+      if (error) throw error
+
+      return files?.map(file => ({
+        name: file.name,
+        path: `${folder}/${file.name}`,
+        url: supabase.storage
+          .from('cooking-sessions')
+          .getPublicUrl(`${folder}/${file.name}`).data.publicUrl,
+        size: file.metadata?.size,
+        createdAt: file.created_at
+      })) || []
+    } catch (error) {
+      console.error('Erreur récupération images utilisateur:', error)
+      return []
     }
   },
 
@@ -196,6 +318,7 @@ export const authService = {
 
 // src/services/sessions.js
 import { supabase } from './supabase'
+import { formatTimeAgo } from '../utils/helpers'
 
 export const sessionsService = {
   // Récupérer le feed principal avec pagination
@@ -397,6 +520,7 @@ export const sessionsService = {
 
 // src/services/challenges.js
 import { supabase } from './supabase'
+import { calculateTimeLeft } from '../utils/helpers'
 
 export const challengesService = {
   // Récupérer les challenges avec statut utilisateur
@@ -502,7 +626,87 @@ export const challengesService = {
   }
 }
 
-// Fonctions utilitaires
+// src/services/clubs.js
+import { supabase } from './supabase'
+
+export const clubsService = {
+  // Récupérer les clubs avec statut utilisateur
+  async getClubs(userId = null) {
+    try {
+      let query = supabase
+        .from('clubs')
+        .select(`
+          *,
+          members_count:club_members(count),
+          sessions_count:cooking_sessions(count),
+          user_membership:club_members(*),
+          recent_members:club_members(
+            user:users(id, username, avatar_url)
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      // Si utilisateur connecté, récupérer son membership
+      if (userId) {
+        query = query.eq('user_membership.user_id', userId)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+
+      return data?.map(club => ({
+        ...club,
+        membersCount: club.members_count?.[0]?.count || 0,
+        sessionsCount: club.sessions_count?.[0]?.count || 0,
+        userMembership: club.user_membership?.[0] || null,
+        recentMembers: club.recent_members?.slice(0, 3).map(m => m.user) || []
+      })) || []
+    } catch (error) {
+      console.error('Erreur récupération clubs:', error)
+      throw error
+    }
+  },
+
+  // Rejoindre un club
+  async joinClub(clubId, userId) {
+    try {
+      const { data, error } = await supabase
+        .from('club_members')
+        .insert([{
+          club_id: clubId,
+          user_id: userId,
+          role: 'member'
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Erreur rejoindre club:', error)
+      throw error
+    }
+  },
+
+  // Quitter un club
+  async leaveClub(clubId, userId) {
+    try {
+      const { error } = await supabase
+        .from('club_members')
+        .delete()
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Erreur quitter club:', error)
+      throw error
+    }
+  }
+}
+
+// Fonctions utilitaires déplacées dans helpers.js mais importées ici pour compatibilité
 const formatTimeAgo = (timestamp) => {
   const now = new Date()
   const time = new Date(timestamp)
