@@ -189,6 +189,43 @@ export const supabaseHelpers = {
     }
   },
 
+  // Créer un profil utilisateur s'il n'existe pas
+  async ensureUserProfile(user) {
+    try {
+      if (!user?.id) return
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!data) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email,
+            username: user.email?.split('@')[0] || 'user',
+            bio: '',
+            avatar_url: null,
+            cook_frequency: null,
+            cook_constraints: [],
+            xp: 0,
+            is_private: false,
+            created_at: new Date().toISOString(),
+            last_seen: new Date().toISOString()
+          })
+
+        if (insertError) throw insertError
+      } else if (error) {
+        throw error
+      }
+    } catch (err) {
+      console.error('Erreur ensureUserProfile:', err)
+    }
+  },
+
   // Obtenir le profil utilisateur complet avec stats
   async getUserProfile(userId) {
     try {
