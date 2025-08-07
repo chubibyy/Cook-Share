@@ -2,47 +2,69 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ChallengesScreen } from '../screens/challenges/ChallengesScreen';
 import { CreateSessionScreen } from '../screens/create/CreateSessionScreen';
 import { ClubsScreen } from '../screens/clubs/ClubsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
-import { COLORS } from '../utils/constants';
+import { COLORS, SPACING, SHADOWS } from '../utils/constants';
+import { useNotificationStore } from '../stores/notificationStore';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Écrans temporaires pour les tabs manquants
-const TempChallengesScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
-    <Text style={{ fontSize: 20, color: COLORS.text }}>🎯 Challenges</Text>
-    <Text style={{ color: COLORS.textMuted, marginTop: 10 }}>Bientôt disponible</Text>
+const TabIcon = ({ icon, focused, badge = 0 }) => (
+  <View style={styles.tabIconContainer}>
+    <Text style={[styles.tabIcon, { color: focused ? COLORS.primary : COLORS.textMuted }]}>
+      {icon}
+    </Text>
+    {badge > 0 && (
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{badge}</Text>
+      </View>
+    )}
   </View>
 );
 
-const TempCreateScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.primary }}>
-    <Text style={{ fontSize: 20, color: COLORS.white }}>➕ Créer</Text>
-    <Text style={{ color: COLORS.white + 'CC', marginTop: 10 }}>Partagez votre création</Text>
-  </View>
+const CreateButton = ({ onPress }) => (
+  <TouchableOpacity style={styles.createButton} onPress={onPress}>
+    <LinearGradient
+      colors={[COLORS.primary, COLORS.secondary]}
+      style={styles.createButtonGradient}
+    >
+      <Text style={styles.createButtonText}>+</Text>
+    </LinearGradient>
+  </TouchableOpacity>
 );
 
-const TempClubsScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
-    <Text style={{ fontSize: 20, color: COLORS.text }}>👥 Clubs</Text>
-    <Text style={{ color: COLORS.textMuted, marginTop: 10 }}>Bientôt disponible</Text>
-  </View>
+const HomeStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="HomeScreen" component={HomeScreen} />
+  </Stack.Navigator>
 );
 
-const TempProfileScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
-    <Text style={{ fontSize: 20, color: COLORS.text }}>👤 Profil</Text>
-    <Text style={{ color: COLORS.textMuted, marginTop: 10 }}>Bientôt disponible</Text>
-  </View>
+const ChallengesStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ChallengesScreen" component={ChallengesScreen} />
+  </Stack.Navigator>
 );
+
+const ClubsStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ClubsScreen" component={ClubsScreen} />
+  </Stack.Navigator>
+);
+
+const ProfileStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+  </Stack.Navigator>
+);
+
 const TabNavigator = () => {
-  const { unreadCount } = useNotificationStore()
+  const { unreadCount } = useNotificationStore();
 
   return (
     <Tab.Navigator
@@ -54,8 +76,8 @@ const TabNavigator = () => {
         tabBarInactiveTintColor: COLORS.textMuted,
       }}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeStack}
         options={{
           tabBarIcon: ({ focused }) => (
@@ -63,9 +85,9 @@ const TabNavigator = () => {
           )
         }}
       />
-      
-      <Tab.Screen 
-        name="Challenges" 
+
+      <Tab.Screen
+        name="Challenges"
         component={ChallengesStack}
         options={{
           tabBarIcon: ({ focused }) => (
@@ -73,9 +95,9 @@ const TabNavigator = () => {
           )
         }}
       />
-      
-      <Tab.Screen 
-        name="Create" 
+
+      <Tab.Screen
+        name="Create"
         component={CreateSessionScreen}
         options={{
           tabBarButton: (props) => (
@@ -83,9 +105,9 @@ const TabNavigator = () => {
           )
         }}
       />
-      
-      <Tab.Screen 
-        name="Clubs" 
+
+      <Tab.Screen
+        name="Clubs"
         component={ClubsStack}
         options={{
           tabBarIcon: ({ focused }) => (
@@ -93,9 +115,9 @@ const TabNavigator = () => {
           )
         }}
       />
-      
-      <Tab.Screen 
-        name="Profile" 
+
+      <Tab.Screen
+        name="Profile"
         component={ProfileStack}
         options={{
           tabBarIcon: ({ focused }) => (
@@ -104,8 +126,8 @@ const TabNavigator = () => {
         }}
       />
     </Tab.Navigator>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   tabBar: {
@@ -157,7 +179,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
   },
-})
+});
 
-export default TabNavigator
+export default TabNavigator;
 
