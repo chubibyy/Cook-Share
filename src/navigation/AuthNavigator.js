@@ -12,8 +12,6 @@ const Stack = createStackNavigator();
 
 const AuthNavigator = () => {
   const { user } = useAuthStore();
-
-  // Si l'utilisateur existe mais n'a pas terminé l'onboarding
   const needsOnboarding = user && !user.onboarding_completed;
 
   return (
@@ -22,28 +20,12 @@ const AuthNavigator = () => {
         headerShown: false,
         gestureEnabled: true,
         gestureDirection: 'horizontal',
-        cardStyleInterpolator: ({ current, layouts }) => {
-          return {
-            cardStyle: {
-              transform: [
-                {
-                  translateX: current.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [layouts.screen.width, 0],
-                  }),
-                },
-              ],
-            },
-          };
-        },
       }}
       initialRouteName={needsOnboarding ? 'Onboarding' : 'Welcome'}
     >
       {needsOnboarding ? (
-        // Flow d'onboarding
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       ) : (
-        // Flow d'authentification
         <>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -55,4 +37,5 @@ const AuthNavigator = () => {
     </Stack.Navigator>
   );
 };
-export { AuthNavigator};
+
+export default AuthNavigator;

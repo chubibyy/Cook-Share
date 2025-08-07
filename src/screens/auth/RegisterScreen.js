@@ -1,4 +1,4 @@
-// src/screens/auth/RegisterScreen.js
+// src/screens/auth/RegisterScreen.js - Version simplifiée
 import React, { useState } from 'react';
 import {
   View,
@@ -18,8 +18,6 @@ import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../utils/constants';
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -30,14 +28,6 @@ const RegisterScreen = ({ navigation }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'Prénom requis';
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Nom requis';
-    }
     
     if (!formData.email.trim()) {
       newErrors.email = 'Email requis';
@@ -64,15 +54,13 @@ const RegisterScreen = ({ navigation }) => {
     
     try {
       const result = await signUp(formData.email, formData.password, {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        username: `${formData.firstName}${formData.lastName}`.toLowerCase()
+        username: formData.email.split('@')[0]
       });
       
       if (result.success) {
         Alert.alert(
           'Inscription réussie !',
-          'Vérifiez votre email pour confirmer votre compte.',
+          result.message,
           [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
         );
       } else {
@@ -100,8 +88,6 @@ const RegisterScreen = ({ navigation }) => {
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <View style={[styles.circle, styles.registerCircle1]} />
-                <View style={[styles.circle, styles.registerCircle2]} />
                 <Text style={styles.logoEmoji}>🧑‍🍳</Text>
               </View>
               
@@ -113,26 +99,6 @@ const RegisterScreen = ({ navigation }) => {
 
             {/* Formulaire */}
             <View style={styles.formContainer}>
-              <View style={styles.nameRow}>
-                <Input
-                  label="Prénom"
-                  placeholder="Prénom"
-                  value={formData.firstName}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, firstName: text }))}
-                  error={errors.firstName}
-                  style={styles.nameInput}
-                />
-                
-                <Input
-                  label="Nom"
-                  placeholder="Nom"
-                  value={formData.lastName}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, lastName: text }))}
-                  error={errors.lastName}
-                  style={styles.nameInput}
-                />
-              </View>
-
               <Input
                 label="Email"
                 placeholder="votre@email.com"
@@ -141,7 +107,6 @@ const RegisterScreen = ({ navigation }) => {
                 error={errors.email}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                leftIcon={<Text style={styles.inputIcon}>📧</Text>}
               />
 
               <Input
@@ -151,7 +116,6 @@ const RegisterScreen = ({ navigation }) => {
                 onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
                 error={errors.password}
                 secureTextEntry
-                leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
               />
 
               <Input
@@ -161,7 +125,6 @@ const RegisterScreen = ({ navigation }) => {
                 onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
                 error={errors.confirmPassword}
                 secureTextEntry
-                leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
               />
 
               <Button
@@ -184,13 +147,6 @@ const RegisterScreen = ({ navigation }) => {
                   Se connecter
                 </Text>
               </Text>
-              
-              <Text style={styles.termsText}>
-                En vous inscrivant, vous acceptez nos{' '}
-                <Text style={styles.termsLink}>conditions d'utilisation</Text>
-                {' '}et notre{' '}
-                <Text style={styles.termsLink}>politique de confidentialité</Text>
-              </Text>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -199,7 +155,7 @@ const RegisterScreen = ({ navigation }) => {
   );
 };
 
-// Styles communs pour tous les écrans
+// Styles communs
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -223,8 +179,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxxl,
   },
   illustration: {
-    width: width * 0.8,
-    height: width * 0.8,
+    width: 200,
+    height: 200,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -237,28 +193,21 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     backgroundColor: COLORS.secondary + '40',
-    top: '20%',
-    left: '10%',
+    top: 20,
+    left: 10,
   },
   circle2: {
     width: 80,
     height: 80,
     backgroundColor: COLORS.primary + '30',
-    bottom: '30%',
-    right: '15%',
-  },
-  circle3: {
-    width: 60,
-    height: 60,
-    backgroundColor: COLORS.accent + '50',
-    top: '10%',
-    right: '20%',
+    bottom: 30,
+    right: 15,
   },
   chefHat: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     backgroundColor: COLORS.white,
-    borderRadius: 50,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -268,23 +217,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   chefEmoji: {
-    fontSize: 40,
-  },
-  decorElement: {
-    position: 'absolute',
-    fontSize: 24,
-  },
-  element1: {
-    top: '40%',
-    left: '5%',
-  },
-  element2: {
-    bottom: '10%',
-    left: '20%',
-  },
-  element3: {
-    top: '60%',
-    right: '10%',
+    fontSize: 32,
   },
   textContainer: {
     flex: 1,
@@ -326,14 +259,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontWeight: TYPOGRAPHY.weights.medium,
   },
-  footer: {
-    alignItems: 'center',
-    paddingBottom: SPACING.lg,
-  },
-  footerText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textMuted,
-  },
   
   // Login/Register Screens
   header: {
@@ -347,39 +272,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.lg,
-    position: 'relative',
-  },
-  loginCircle1: {
-    width: 60,
-    height: 60,
-    backgroundColor: COLORS.primary + '20',
-    top: 0,
-    left: 0,
-  },
-  loginCircle2: {
-    width: 40,
-    height: 40,
-    backgroundColor: COLORS.secondary + '30',
-    bottom: 0,
-    right: 0,
-  },
-  registerCircle1: {
-    width: 70,
-    height: 70,
-    backgroundColor: COLORS.accent + '20',
-    top: 5,
-    left: 5,
-  },
-  registerCircle2: {
-    width: 35,
-    height: 35,
-    backgroundColor: COLORS.primary + '40',
-    bottom: 5,
-    right: 5,
+    backgroundColor: COLORS.primaryAlpha,
+    borderRadius: 40,
   },
   logoEmoji: {
     fontSize: 32,
-    position: 'absolute',
   },
   headerTitle: {
     fontSize: TYPOGRAPHY.sizes.xxl,
@@ -397,16 +294,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: SPACING.lg,
   },
-  nameRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  nameInput: {
-    flex: 1,
-  },
-  inputIcon: {
-    fontSize: 18,
-  },
   forgotPassword: {
     alignSelf: 'flex-end',
     paddingVertical: SPACING.sm,
@@ -420,20 +307,18 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: SPACING.lg,
   },
+  footer: {
+    alignItems: 'center',
+    paddingBottom: SPACING.xl,
+  },
+  footerText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
   footerLink: {
     color: COLORS.primary,
     fontWeight: TYPOGRAPHY.weights.semibold,
-  },
-  termsText: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: SPACING.md,
-    lineHeight: TYPOGRAPHY.sizes.xs * 1.4,
-  },
-  termsLink: {
-    color: COLORS.primary,
-    textDecorationLine: 'underline',
   },
 });
 

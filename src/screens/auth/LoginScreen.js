@@ -1,4 +1,4 @@
-// src/screens/auth/LoginScreen.js
+// src/screens/auth/LoginScreen.js - Version simplifiée
 import React, { useState } from 'react';
 import {
   View,
@@ -7,7 +7,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  TouchableOpacity
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -50,9 +51,7 @@ const LoginScreen = ({ navigation }) => {
     try {
       const result = await signIn(formData.email, formData.password);
       
-      if (result.success) {
-        // Navigation handled by auth state change
-      } else {
+      if (!result.success) {
         Alert.alert('Erreur de connexion', result.error);
       }
     } catch (error) {
@@ -74,11 +73,9 @@ const LoginScreen = ({ navigation }) => {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Header avec illustration */}
+            {/* Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <View style={[styles.circle, styles.loginCircle1]} />
-                <View style={[styles.circle, styles.loginCircle2]} />
                 <Text style={styles.logoEmoji}>👨‍🍳</Text>
               </View>
               
@@ -98,7 +95,6 @@ const LoginScreen = ({ navigation }) => {
                 error={errors.email}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                leftIcon={<Text style={styles.inputIcon}>📧</Text>}
               />
 
               <Input
@@ -108,7 +104,6 @@ const LoginScreen = ({ navigation }) => {
                 onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
                 error={errors.password}
                 secureTextEntry
-                leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
               />
 
               <TouchableOpacity 
@@ -147,7 +142,7 @@ const LoginScreen = ({ navigation }) => {
     </LinearGradient>
   );
 };
-// Styles communs pour tous les écrans
+// Styles communs
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -171,8 +166,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxxl,
   },
   illustration: {
-    width: width * 0.8,
-    height: width * 0.8,
+    width: 200,
+    height: 200,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -185,28 +180,21 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     backgroundColor: COLORS.secondary + '40',
-    top: '20%',
-    left: '10%',
+    top: 20,
+    left: 10,
   },
   circle2: {
     width: 80,
     height: 80,
     backgroundColor: COLORS.primary + '30',
-    bottom: '30%',
-    right: '15%',
-  },
-  circle3: {
-    width: 60,
-    height: 60,
-    backgroundColor: COLORS.accent + '50',
-    top: '10%',
-    right: '20%',
+    bottom: 30,
+    right: 15,
   },
   chefHat: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     backgroundColor: COLORS.white,
-    borderRadius: 50,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -216,23 +204,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   chefEmoji: {
-    fontSize: 40,
-  },
-  decorElement: {
-    position: 'absolute',
-    fontSize: 24,
-  },
-  element1: {
-    top: '40%',
-    left: '5%',
-  },
-  element2: {
-    bottom: '10%',
-    left: '20%',
-  },
-  element3: {
-    top: '60%',
-    right: '10%',
+    fontSize: 32,
   },
   textContainer: {
     flex: 1,
@@ -274,14 +246,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontWeight: TYPOGRAPHY.weights.medium,
   },
-  footer: {
-    alignItems: 'center',
-    paddingBottom: SPACING.lg,
-  },
-  footerText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textMuted,
-  },
   
   // Login/Register Screens
   header: {
@@ -295,39 +259,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.lg,
-    position: 'relative',
-  },
-  loginCircle1: {
-    width: 60,
-    height: 60,
-    backgroundColor: COLORS.primary + '20',
-    top: 0,
-    left: 0,
-  },
-  loginCircle2: {
-    width: 40,
-    height: 40,
-    backgroundColor: COLORS.secondary + '30',
-    bottom: 0,
-    right: 0,
-  },
-  registerCircle1: {
-    width: 70,
-    height: 70,
-    backgroundColor: COLORS.accent + '20',
-    top: 5,
-    left: 5,
-  },
-  registerCircle2: {
-    width: 35,
-    height: 35,
-    backgroundColor: COLORS.primary + '40',
-    bottom: 5,
-    right: 5,
+    backgroundColor: COLORS.primaryAlpha,
+    borderRadius: 40,
   },
   logoEmoji: {
     fontSize: 32,
-    position: 'absolute',
   },
   headerTitle: {
     fontSize: TYPOGRAPHY.sizes.xxl,
@@ -345,16 +281,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: SPACING.lg,
   },
-  nameRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  nameInput: {
-    flex: 1,
-  },
-  inputIcon: {
-    fontSize: 18,
-  },
   forgotPassword: {
     alignSelf: 'flex-end',
     paddingVertical: SPACING.sm,
@@ -368,21 +294,19 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: SPACING.lg,
   },
+  footer: {
+    alignItems: 'center',
+    paddingBottom: SPACING.xl,
+  },
+  footerText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
   footerLink: {
     color: COLORS.primary,
     fontWeight: TYPOGRAPHY.weights.semibold,
   },
-  termsText: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: SPACING.md,
-    lineHeight: TYPOGRAPHY.sizes.xs * 1.4,
-  },
-  termsLink: {
-    color: COLORS.primary,
-    textDecorationLine: 'underline',
-  },
 });
 
-export { LoginScreen};
+export { LoginScreen };

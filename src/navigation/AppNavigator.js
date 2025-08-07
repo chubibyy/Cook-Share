@@ -1,4 +1,4 @@
-// src/navigation/AppNavigator.js - Navigateur principal mis à jour
+// src/navigation/AppNavigator.js
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -51,18 +51,17 @@ const AppNavigator = () => {
       <Stack.Navigator 
         screenOptions={{ 
           headerShown: false,
-          gestureEnabled: false // Désactiver les gestes pour éviter les retours non désirés
+          gestureEnabled: false
         }}
       >
         {user && user.onboarding_completed ? (
-          // Utilisateur connecté et onboardé -> App principale
           <Stack.Screen name="Main" component={TabNavigator} />
         ) : (
-          // Pas connecté ou pas onboardé -> Flow d'auth
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
-export { AppNavigator };
+
+export default AppNavigator;

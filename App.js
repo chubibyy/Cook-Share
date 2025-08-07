@@ -1,3 +1,4 @@
+
 // App.js Final - Version Production Complète
 import React, { useEffect } from 'react';
 import { LogBox, Alert, StatusBar } from 'react-native';
