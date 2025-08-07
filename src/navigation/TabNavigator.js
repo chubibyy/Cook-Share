@@ -2,13 +2,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ChallengesScreen } from '../screens/challenges/ChallengesScreen';
 import { CreateSessionScreen } from '../screens/create/CreateSessionScreen';
 import { ClubsScreen } from '../screens/clubs/ClubsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
-import { COLORS } from '../utils/constants';
+import { COLORS, SPACING, SHADOWS } from '../utils/constants';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
