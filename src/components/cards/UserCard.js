@@ -1,4 +1,4 @@
-// src/components/cards/UserCard.js
+// src/components/cards/UserCard.js - Version corrigée
 import React from 'react'
 import { 
   View, 
@@ -7,8 +7,7 @@ import {
   StyleSheet 
 } from 'react-native'
 import { Avatar, Badge, Button } from '../common'
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
-import { getLevelFromXP } from '../../utils/constants'
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, getLevelFromXP } from '../../utils/constants'
 
 const UserCard = ({
   user,

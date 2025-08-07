@@ -223,3 +223,176 @@ export const ANIMATIONS = {
   normal: 300,
   slow: 500
 }
+
+// Types de cuisine avec emojis
+export const CUISINE_TYPES = [
+  { name: 'Française', emoji: '🇫🇷' },
+  { name: 'Italienne', emoji: '🇮🇹' },
+  { name: 'Japonaise', emoji: '🇯🇵' },
+  { name: 'Mexicaine', emoji: '🇲🇽' },
+  { name: 'Indienne', emoji: '🇮🇳' },
+  { name: 'Chinoise', emoji: '🇨🇳' },
+  { name: 'Thaïlandaise', emoji: '🇹🇭' },
+  { name: 'Méditerranéenne', emoji: '🌊' },
+  { name: 'Américaine', emoji: '🇺🇸' },
+  { name: 'Libanaise', emoji: '🇱🇧' },
+  { name: 'Marocaine', emoji: '🇲🇦' },
+  { name: 'Végétarienne', emoji: '🥬' },
+  { name: 'Végétalienne', emoji: '🌱' },
+  { name: 'Sans gluten', emoji: '🌾' },
+  { name: 'Fusion', emoji: '🌎' }
+];
+
+// Niveaux de difficulté
+export const DIFFICULTY_LEVELS = {
+  1: { 
+    name: 'Très facile', 
+    icon: '⭐', 
+    color: COLORS.success,
+    description: 'Parfait pour débuter'
+  },
+  2: { 
+    name: 'Facile', 
+    icon: '⭐⭐', 
+    color: COLORS.info,
+    description: 'Quelques techniques de base'
+  },
+  3: { 
+    name: 'Intermédiaire', 
+    icon: '⭐⭐⭐', 
+    color: COLORS.warning,
+    description: 'Demande de la pratique'
+  },
+  4: { 
+    name: 'Difficile', 
+    icon: '⭐⭐⭐⭐', 
+    color: COLORS.error,
+    description: 'Pour cuisiniers expérimentés'
+  },
+  5: { 
+    name: 'Expert', 
+    icon: '⭐⭐⭐⭐⭐', 
+    color: COLORS.primaryDark,
+    description: 'Réservé aux chefs professionnels'
+  }
+};
+
+// Contraintes alimentaires communes
+export const DIETARY_CONSTRAINTS = [
+  'Végétarien',
+  'Végétalien',
+  'Sans gluten',
+  'Sans lactose',
+  'Halal',
+  'Casher',
+  'Paléo',
+  'Cétogène',
+  'Sans sucre',
+  'Sans noix',
+  'Bio uniquement',
+  'Local uniquement'
+];
+
+// Fréquences de cuisine
+export const COOK_FREQUENCIES = [
+  { value: 'daily', label: 'Tous les jours', emoji: '👨‍🍳' },
+  { value: 'weekly', label: 'Plusieurs fois par semaine', emoji: '🍽️' },
+  { value: 'weekend', label: 'Week-ends seulement', emoji: '🏠' },
+  { value: 'monthly', label: 'Occasionnellement', emoji: '🎉' },
+  { value: 'rarely', label: 'Rarement', emoji: '🥡' }
+];
+
+// Tags populaires pour les sessions
+export const POPULAR_TAGS = [
+  'rapide',
+  'healthy',
+  'comfort food',
+  'dessert',
+  'apéritif',
+  'plat principal',
+  'entrée',
+  'petit déjeuner',
+  'brunch',
+  'dîner',
+  'festif',
+  'enfants',
+  'batch cooking',
+  'meal prep',
+  'économique',
+  'gourmand',
+  'léger',
+  'protéiné',
+  'épicé',
+  'sucré',
+  'salé',
+  'cru',
+  'grillé',
+  'mijoté',
+  'fait maison'
+];
+
+// Tailles d'écran pour responsive
+export const SCREEN_SIZES = {
+  small: 320,   // iPhone SE
+  medium: 375,  // iPhone 11
+  large: 414,   // iPhone 11 Pro Max
+  tablet: 768   // iPad
+};
+
+// Templates de notifications
+export const NOTIFICATION_TEMPLATES = {
+  LIKE: (username) => `${username} a aimé votre création`,
+  COMMENT: (username) => `${username} a commenté votre plat`,
+  FOLLOW: (username) => `${username} vous suit maintenant`,
+  CHALLENGE_NEW: (title) => `Nouveau défi disponible : ${title}`,
+  CHALLENGE_ENDING: (title) => `Plus que 24h pour le défi : ${title}`,
+  CHALLENGE_WON: (title, xp) => `Défi "${title}" réussi ! +${xp} XP`,
+  CLUB_INVITE: (clubName) => `Invitation à rejoindre ${clubName}`,
+  LEVEL_UP: (levelName, level) => `Félicitations ! Vous êtes maintenant ${levelName} (niveau ${level})`
+};
+
+// Achievements/Succès déblocables
+export const ACHIEVEMENTS = {
+  FIRST_SESSION: {
+    id: 'first_session',
+    title: 'Premier pas',
+    description: 'Partagez votre première création',
+    icon: '🥳',
+    xp: 50
+  },
+  FIRST_LIKE: {
+    id: 'first_like',
+    title: 'Apprécié',
+    description: 'Recevez votre premier like',
+    icon: '❤️',
+    xp: 25
+  },
+  WEEK_STREAK: {
+    id: 'week_streak',
+    title: 'Régularité',
+    description: 'Partagez une création chaque jour pendant 7 jours',
+    icon: '🔥',
+    xp: 200
+  },
+  CHALLENGE_MASTER: {
+    id: 'challenge_master',
+    title: 'Maître des défis',
+    description: 'Réussissez 10 challenges',
+    icon: '🏆',
+    xp: 500
+  },
+  SOCIAL_BUTTERFLY: {
+    id: 'social_butterfly',
+    title: 'Papillon social',
+    description: 'Obtenez 100 followers',
+    icon: '🦋',
+    xp: 300
+  },
+  HELPFUL_CHEF: {
+    id: 'helpful_chef',
+    title: 'Chef serviable',
+    description: 'Laissez 50 commentaires constructifs',
+    icon: '💬',
+    xp: 150
+  }
+}
