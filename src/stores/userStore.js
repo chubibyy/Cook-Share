@@ -1,6 +1,8 @@
 // src/stores/userStore.js
 import { create } from 'zustand'
 import { supabase, supabaseHelpers } from '../services/supabase'
+import { useAuthStore } from './authStore'
+
 
 export const useUserStore = create((set, get) => ({
   // État

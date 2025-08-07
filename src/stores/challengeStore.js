@@ -1,6 +1,8 @@
 // src/stores/challengeStore.js
 import { create } from 'zustand'
 import { challengesService } from '../services/challenges'
+import { useAuthStore } from './authStore'
+
 
 export const useChallengeStore = create((set, get) => ({
   // État

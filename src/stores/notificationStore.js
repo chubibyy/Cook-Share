@@ -1,6 +1,8 @@
 // src/stores/notificationStore.js
 import { create } from 'zustand'
 import { supabase } from '../services/supabase'
+import { useAuthStore } from './authStore'
+// Store Zustand pour la gestion des notifications
 
 export const useNotificationStore = create((set, get) => ({
   // État
