@@ -199,10 +199,7 @@ export const supabaseHelpers = {
           sessions_count:cooking_sessions(count),
           followers_count:followers!followed_id(count),
           following_count:followers!follower_id(count),
-          challenges_completed:challenge_participants!inner(
-            count,
-            challenges!inner(*)
-          )
+          challenges_completed:challenge_participants!inner(count)
         `)
         .eq('id', userId)
         .single()
