@@ -17,11 +17,22 @@ import Button from '../../components/common/Button';
 import { Avatar } from '../../components/common';
 import { useAuthStore } from '../../stores/authStore';
 import { useCamera } from '../../hooks/useCamera';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../utils/constants';
+import {
+  COLORS,
+  SPACING,
+  TYPOGRAPHY,
+  RADIUS,
+  ONBOARDING_STEPS,
+  CUISINE_TYPES,
+  DIETARY_OPTIONS,
+  COOKING_LEVELS,
+  COOKING_FREQUENCIES,
+  COOKING_FOR_OPTIONS,
+} from '../../utils/constants';
 
 const { width } = Dimensions.get('window');
 
-const OnboardingScreen = () => {
+const OnboardingScreen = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [userData, setUserData] = useState({
     foodPreferences: [],
@@ -35,56 +46,13 @@ const OnboardingScreen = () => {
   });
 
   const { updateProfile, user } = useAuthStore();
+  const completeOnboardingStore = useAuthStore((s) => s.completeOnboarding);
   const { takePhoto, pickImage } = useCamera();
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // Étapes
-  const steps = [
-    { title: 'Tell us about your food preference...', subtitle: 'Wich cuisine do you prefer ?', type: 'food_preferences' },
-    { title: 'Describe your cooking style', subtitle: 'Help us personalize your experience', type: 'cooking_profile' },
-    { title: 'Personalize your profile', subtitle: "Almost done! Let's make your profile shine", type: 'profile_setup' }
-  ];
-
-  // Options
-  const cuisineTypes = [
-    { id: 'french', label: 'Française', emoji: '🇫🇷' },
-    { id: 'italian', label: 'Italienne', emoji: '🇮🇹' },
-    { id: 'asian', label: 'Asiatique', emoji: '🥢' },
-    { id: 'mexican', label: 'Mexicaine', emoji: '🌮' },
-    { id: 'mediterranean', label: 'Méditerranéenne', emoji: '🫒' },
-    { id: 'indian', label: 'Indienne', emoji: '🍛' },
-  ];
-
-  const dietaryOptions = [
-    { id: 'vegetarian', label: 'Végétarien', emoji: '🥬' },
-    { id: 'vegan', label: 'Végétalien', emoji: '🌱' },
-    { id: 'gluten_free', label: 'Sans gluten', emoji: '🌾' },
-    { id: 'halal', label: 'Halal', emoji: '☪️' },
-    { id: 'kosher', label: 'Casher', emoji: '✡️' },
-    { id: 'keto', label: 'Cétogène', emoji: '🥓' },
-  ];
-
-  const cookingLevels = [
-    { id: 'beginner', label: 'Beginner', description: 'Je débute en cuisine' },
-    { id: 'regular', label: 'Regular', description: 'Je cuisine régulièrement' },
-    { id: 'enthusiast', label: 'Enthusiast', description: 'Passionné de cuisine' },
-  ];
-
-  const cookingFrequencies = [
-    { id: 'weekdays', label: 'Weekdays', description: 'En semaine principalement' },
-    { id: 'everyday', label: 'Everyday', description: 'Tous les jours' },
-    { id: 'when_i_can', label: 'When I can', description: "Quand j'ai le temps" },
-  ];
-
-  const cookingForOptions = [
-    { id: 'myself', label: 'My self', description: 'Juste pour moi' },
-    { id: 'family', label: 'My family', description: 'Pour ma famille' },
-    { id: 'friends', label: 'My friends', description: 'Pour mes amis' },
-  ];
-
-  // Navigation
+  // Nav
   const nextStep = () => {
-    if (currentStep < steps.length - 1) {
+    if (currentStep < ONBOARDING_STEPS.length - 1) {
       Animated.timing(slideAnim, {
         toValue: -(currentStep + 1) * width,
         duration: 300,
@@ -143,29 +111,39 @@ const OnboardingScreen = () => {
   // Finalisation
   const completeOnboarding = async () => {
     try {
-      await updateProfile({
+      await completeOnboardingStore({
         username: userData.username || user.email.split('@')[0],
         bio: userData.bio,
         cook_frequency: userData.cookingFrequency,
-        cook_constraints: [...userData.dietaryRestrictions, ...userData.foodPreferences],
+        cook_constraints: [
+          ...userData.dietaryRestrictions,
+          ...userData.foodPreferences,
+        ],
         cooking_level: userData.cookingLevel,
         cooking_for: userData.cookingFor,
-        onboarding_completed: true,
+        avatar: userData.avatar, // { uri, type, name }
+      });
+
+      // Aller sur l’app principale (Feed)
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'App' }], // adapte si ton root s’appelle autrement
       });
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder vos préférences');
+      console.error('completeOnboarding error', error);
+      Alert.alert('Erreur', "Impossible de terminer l'onboarding");
     }
   };
 
   // UI fragments
   const renderFoodPreferences = () => (
     <View>
-      <Text style={styles.stepTitle}>{steps[0].title}</Text>
-      <Text style={styles.stepSubtitle}>{steps[0].subtitle}</Text>
+      <Text style={styles.stepTitle}>{ONBOARDING_STEPS[0].title}</Text>
+      <Text style={styles.stepSubtitle}>{ONBOARDING_STEPS[0].subtitle}</Text>
 
       <Text style={styles.sectionTitle}>Types de cuisine préférés</Text>
       <View style={styles.optionsGrid}>
-        {cuisineTypes.map((cuisine) => (
+        {CUISINE_TYPES.map((cuisine) => (
           <TouchableOpacity
             key={cuisine.id}
             style={[
@@ -182,7 +160,7 @@ const OnboardingScreen = () => {
 
       <Text style={styles.sectionTitle}>Restrictions alimentaires</Text>
       <View style={styles.optionsGrid}>
-        {dietaryOptions.map((option) => (
+        {DIETARY_OPTIONS.map((option) => (
           <TouchableOpacity
             key={option.id}
             style={[
@@ -208,13 +186,13 @@ const OnboardingScreen = () => {
 
   const renderCookingProfile = () => (
     <View>
-      <Text style={styles.stepTitle}>{steps[1].title}</Text>
-      <Text style={styles.stepSubtitle}>{steps[1].subtitle}</Text>
+      <Text style={styles.stepTitle}>{ONBOARDING_STEPS[1].title}</Text>
+      <Text style={styles.stepSubtitle}>{ONBOARDING_STEPS[1].subtitle}</Text>
 
       <View style={styles.questionSection}>
         <Text style={styles.questionTitle}>Are you more a ...</Text>
         <View style={styles.levelOptions}>
-          {cookingLevels.map((level) => (
+          {COOKING_LEVELS.map((level) => (
             <TouchableOpacity
               key={level.id}
               style={[
@@ -233,7 +211,7 @@ const OnboardingScreen = () => {
       <View style={styles.questionSection}>
         <Text style={styles.questionTitle}>You cook mostly ...</Text>
         <View style={styles.frequencyOptions}>
-          {cookingFrequencies.map((freq) => (
+          {COOKING_FREQUENCIES.map((freq) => (
             <TouchableOpacity
               key={freq.id}
               style={[
@@ -252,7 +230,7 @@ const OnboardingScreen = () => {
       <View style={styles.questionSection}>
         <Text style={styles.questionTitle}>You cook for ...</Text>
         <View style={styles.cookingForOptions}>
-          {cookingForOptions.map((opt) => (
+          {COOKING_FOR_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.id}
               style={[
@@ -272,8 +250,8 @@ const OnboardingScreen = () => {
 
   const renderProfileSetup = () => (
     <View>
-      <Text style={styles.stepTitle}>{steps[2].title}</Text>
-      <Text style={styles.stepSubtitle}>{steps[2].subtitle}</Text>
+      <Text style={styles.stepTitle}>{ONBOARDING_STEPS[2].title}</Text>
+      <Text style={styles.stepSubtitle}>{ONBOARDING_STEPS[2].subtitle}</Text>
 
       <View style={styles.avatarSection}>
         <TouchableOpacity onPress={handleAvatarPress}>
@@ -320,16 +298,26 @@ const OnboardingScreen = () => {
   const renderProgressBar = () => (
     <View style={styles.progressContainer}>
       <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${((currentStep + 1) / steps.length) * 100}%` }]} />
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%` },
+          ]}
+        />
       </View>
-      <Text style={styles.progressText}>{currentStep + 1} sur {steps.length}</Text>
+      <Text style={styles.progressText}>
+        {currentStep + 1} sur {ONBOARDING_STEPS.length}
+      </Text>
     </View>
   );
 
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return userData.foodPreferences.length > 0 || userData.dietaryRestrictions.length > 0;
+        return (
+          userData.foodPreferences.length > 0 ||
+          userData.dietaryRestrictions.length > 0
+        );
       case 1:
         return userData.cookingLevel && userData.cookingFrequency;
       case 2:
@@ -356,7 +344,7 @@ const OnboardingScreen = () => {
           <Animated.View
             style={[
               styles.stepsTrack,
-              { width: width * steps.length, transform: [{ translateX: slideAnim }] }
+              { width: width * ONBOARDING_STEPS.length, transform: [{ translateX: slideAnim }] },
             ]}
           >
             <View style={[styles.step, { width }]}>
@@ -382,7 +370,7 @@ const OnboardingScreen = () => {
         {/* Bouton */}
         <View style={styles.navigationContainer}>
           <Button
-            title={currentStep === steps.length - 1 ? "Let's gooooo" : "Suivant →"}
+            title={currentStep === ONBOARDING_STEPS.length - 1 ? "Let's gooooo" : "Suivant →"}
             onPress={nextStep}
             disabled={!canProceed()}
             style={styles.nextButton}
@@ -406,12 +394,12 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 2 },
   progressText: { fontSize: TYPOGRAPHY.sizes.sm, color: COLORS.textMuted, fontWeight: TYPOGRAPHY.weights.medium },
 
-  // Nouveaux conteneurs
-  stepsViewport: { flex: 1, overflow: 'hidden' }, // clippe les pages
-  stepsTrack: { flexDirection: 'row' }, // piste horizontale
+  // Viewport / Track
+  stepsViewport: { flex: 1, overflow: 'hidden' },
+  stepsTrack: { flexDirection: 'row' },
 
-  // Une page = largeur écran
-  step: { paddingHorizontal: SPACING.lg }, // PAS de flex:1 sinon ça casse la largeur fixe
+  // Page = largeur écran
+  step: { paddingHorizontal: SPACING.lg },
   stepContent: { flexGrow: 1, paddingTop: SPACING.lg },
 
   stepTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold, color: COLORS.text, textAlign: 'center', marginBottom: SPACING.sm },

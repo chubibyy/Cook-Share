@@ -224,24 +224,131 @@ export const ANIMATIONS = {
   slow: 500
 }
 
-// Types de cuisine avec emojis
-export const CUISINE_TYPES = [
-  { name: 'Française', emoji: '🇫🇷' },
-  { name: 'Italienne', emoji: '🇮🇹' },
-  { name: 'Japonaise', emoji: '🇯🇵' },
-  { name: 'Mexicaine', emoji: '🇲🇽' },
-  { name: 'Indienne', emoji: '🇮🇳' },
-  { name: 'Chinoise', emoji: '🇨🇳' },
-  { name: 'Thaïlandaise', emoji: '🇹🇭' },
-  { name: 'Méditerranéenne', emoji: '🌊' },
-  { name: 'Américaine', emoji: '🇺🇸' },
-  { name: 'Libanaise', emoji: '🇱🇧' },
-  { name: 'Marocaine', emoji: '🇲🇦' },
-  { name: 'Végétarienne', emoji: '🥬' },
-  { name: 'Végétalienne', emoji: '🌱' },
-  { name: 'Sans gluten', emoji: '🌾' },
-  { name: 'Fusion', emoji: '🌎' }
+// =======================
+// Onboarding – constantes
+// =======================
+
+export const ONBOARDING_STEPS = [
+  { title: 'Tell us about your food preference...', subtitle: 'Wich cuisine do you prefer ?', type: 'food_preferences' },
+  { title: 'Describe your cooking style',        subtitle: 'Help us personalize your experience', type: 'cooking_profile' },
+  { title: 'Personalize your profile',           subtitle: "Almost done! Let's make your profile shine", type: 'profile_setup' },
 ];
+
+export const CUISINE_TYPES = [
+  // — existants (on garde les mêmes id pour ne rien casser) —
+  { id: 'french',        label: 'Française',        emoji: '🇫🇷' },
+  { id: 'italian',       label: 'Italienne',        emoji: '🇮🇹' },
+  { id: 'mexican',       label: 'Mexicaine',        emoji: '🌮' },
+  { id: 'mediterranean', label: 'Méditerranéenne',  emoji: '🫒' },
+  { id: 'indian',        label: 'Indienne',         emoji: '🍛' },
+  { id: 'japanese',      label: 'Japonaise',        emoji: '🍣' },
+  { id: 'chinese',       label: 'Chinoise',         emoji: '🥟' },
+  { id: 'korean',        label: 'Coréenne',         emoji: '🍜' },
+  { id: 'thai',          label: 'Thaïlandaise',     emoji: '🌶️' },
+  { id: 'vietnamese',    label: 'Vietnamienne',     emoji: '🍜' },
+  { id: 'indonesian',    label: 'Indonésienne',     emoji: '🍢' },
+  { id: 'malaysian',     label: 'Malaisienne',      emoji: '🍛' },
+  { id: 'filipino',      label: 'Philippine',       emoji: '🍗' },
+  { id: 'singaporean',   label: 'Singapourienne',   emoji: '🥡' },
+  { id: 'spanish',       label: 'Espagnole',        emoji: '🥘' },
+  { id: 'portuguese',    label: 'Portugaise',       emoji: '🐟' },
+  { id: 'greek',         label: 'Grecque',          emoji: '🥗' },
+  { id: 'turkish',       label: 'Turque',           emoji: '🍢' },
+  { id: 'lebanese',      label: 'Libanaise',        emoji: '🥙' },
+  { id: 'persian',       label: 'Persane',          emoji: '🍆' },
+  { id: 'israeli',       label: 'Israélienne',      emoji: '🍅' },
+  { id: 'middle_eastern',label: 'Moyen-Orient',     emoji: '🫓' },
+  { id: 'moroccan',      label: 'Marocaine',        emoji: '🍲' },
+  { id: 'tunisian',      label: 'Tunisienne',       emoji: '🌶️' },
+  { id: 'egyptian',      label: 'Égyptienne',       emoji: '🧆' },
+  { id: 'ethiopian',     label: 'Éthiopienne',      emoji: '🍛' },
+  { id: 'nigerian',      label: 'Nigériane',        emoji: '🍲' },
+  { id: 'ghanaian',      label: 'Ghanéenne',        emoji: '🍚' },
+  { id: 'south_african', label: 'Sud-Africaine',    emoji: '🥩' },
+  { id: 'west_african',  label: 'Afrique de l’Ouest', emoji: '🍠' },
+  { id: 'american',      label: 'Américaine',       emoji: '🍔' },
+  { id: 'bbq',           label: 'BBQ',              emoji: '🔥' },
+  { id: 'tex_mex',       label: 'Tex-Mex',          emoji: '🌯' },
+  { id: 'cajun_creole',  label: 'Cajun & Créole',   emoji: '🦐' },
+  { id: 'caribbean',     label: 'Caribéenne',       emoji: '🍍' },
+  { id: 'peruvian',      label: 'Péruvienne',       emoji: '🧂' },
+  { id: 'brazilian',     label: 'Brésilienne',      emoji: '🥩' },
+  { id: 'argentinian',   label: 'Argentine',        emoji: '🍖' },
+
+  { id: 'british',       label: 'Britannique',      emoji: '🥧' },
+  { id: 'irish',         label: 'Irlandaise',       emoji: '🥔' },
+  { id: 'german',        label: 'Allemande',        emoji: '🥨' },
+  { id: 'polish',        label: 'Polonaise',        emoji: '🥟' },
+  { id: 'russian',       label: 'Russe',            emoji: '🥞' },
+  { id: 'balkan',        label: 'Balkanique',       emoji: '🥙' },
+  { id: 'scandinavian',  label: 'Scandinave',       emoji: '🧈' },
+  // Styles transverses
+  { id: 'street_food',   label: 'Street Food',      emoji: '🍢' },
+  { id: 'fusion',        label: 'Fusion',           emoji: '✨' },
+  { id: 'seafood',       label: 'Poissons & fruits de mer', emoji: '🦞' },
+  { id: 'patisserie',    label: 'Pâtisserie',       emoji: '🧁' },
+];
+
+
+export const DIETARY_OPTIONS = [
+  // — existants —
+  { id: 'vegetarian',     label: 'Végétarien',        emoji: '🥬' },
+  { id: 'vegan',          label: 'Végétalien',        emoji: '🌱' },
+  { id: 'gluten_free',    label: 'Sans gluten',       emoji: '🌾' },
+  { id: 'halal',          label: 'Halal',             emoji: '☪️' },
+  { id: 'kosher',         label: 'Casher',            emoji: '✡️' },
+  { id: 'keto',           label: 'Cétogène',          emoji: '🥓' },
+
+  // — ajouts —
+  { id: 'pescatarian',    label: 'Pescétarien',       emoji: '🐟' },
+  { id: 'flexitarian',    label: 'Flexitarien',       emoji: '🥗' },
+  { id: 'paleo',          label: 'Paléo',             emoji: '🍖' },
+  { id: 'low_carb',       label: 'Low-carb',          emoji: '📉' },
+  { id: 'low_fat',        label: 'Low-fat',           emoji: '🥫' },
+  { id: 'low_sodium',     label: 'Pauvre en sel',     emoji: '🧂' },
+  { id: 'sugar_free',     label: 'Sans sucre',        emoji: '🚫🍬' },
+  { id: 'diabetic',       label: 'Diabétique-friendly', emoji: '🩸' },
+  { id: 'high_protein',   label: 'Riche en protéines', emoji: '💪' },
+
+  { id: 'lactose_free',   label: 'Sans lactose',      emoji: '🥛🚫' },
+  { id: 'dairy_free',     label: 'Sans produits laitiers', emoji: '🧀🚫' },
+  { id: 'egg_free',       label: 'Sans œufs',         emoji: '🥚🚫' },
+  { id: 'nut_free',       label: 'Sans fruits à coque', emoji: '🥜🚫' },
+  { id: 'peanut_free',    label: 'Sans arachides',    emoji: '🥜❌' },
+  { id: 'soy_free',       label: 'Sans soja',         emoji: '🌱🚫' },
+  { id: 'sesame_free',    label: 'Sans sésame',       emoji: '🟤🚫' },
+  { id: 'shellfish_free', label: 'Sans crustacés',    emoji: '🦐🚫' },
+  { id: 'fish_free',      label: 'Sans poisson',      emoji: '🐟🚫' },
+  { id: 'pork_free',      label: 'Sans porc',         emoji: '🐖🚫' },
+  { id: 'beef_free',      label: 'Sans bœuf',         emoji: '🐄🚫' },
+  { id: 'alcohol_free',   label: 'Sans alcool',       emoji: '🍷🚫' },
+  { id: 'caffeine_free',  label: 'Sans caféine',      emoji: '☕️🚫' },
+
+  // Valeurs / modes de vie (souvent stockés dans les mêmes contraintes)
+  { id: 'organic',        label: 'Bio',               emoji: '🍃' },
+  { id: 'zero_waste',     label: 'Zéro déchet',       emoji: '♻️' },
+  { id: 'low_fodmap',     label: 'Low-FODMAP',        emoji: '🧬' },
+];
+
+
+export const COOKING_LEVELS = [
+  { id: 'beginner',   label: 'Beginner',   description: 'Je débute en cuisine' },
+  { id: 'regular',    label: 'Regular',    description: 'Je cuisine régulièrement' },
+  { id: 'enthusiast', label: 'Enthusiast', description: 'Passionné de cuisine' },
+];
+
+export const COOKING_FREQUENCIES = [
+  { id: 'weekdays',   label: 'Weekdays',   description: 'En semaine principalement' },
+  { id: 'everyday',   label: 'Everyday',   description: 'Tous les jours' },
+  { id: 'when_i_can', label: 'When I can', description: "Quand j'ai le temps" },
+];
+
+export const COOKING_FOR_OPTIONS = [
+  { id: 'myself',  label: 'My self',   description: 'Juste pour moi' },
+  { id: 'family',  label: 'My family', description: 'Pour ma famille' },
+  { id: 'friends', label: 'My friends',description: 'Pour mes amis' },
+];
+
 
 // Niveaux de difficulté
 export const DIFFICULTY_LEVELS = {
@@ -276,31 +383,6 @@ export const DIFFICULTY_LEVELS = {
     description: 'Réservé aux chefs professionnels'
   }
 };
-
-// Contraintes alimentaires communes
-export const DIETARY_CONSTRAINTS = [
-  'Végétarien',
-  'Végétalien',
-  'Sans gluten',
-  'Sans lactose',
-  'Halal',
-  'Casher',
-  'Paléo',
-  'Cétogène',
-  'Sans sucre',
-  'Sans noix',
-  'Bio uniquement',
-  'Local uniquement'
-];
-
-// Fréquences de cuisine
-export const COOK_FREQUENCIES = [
-  { value: 'daily', label: 'Tous les jours', emoji: '👨‍🍳' },
-  { value: 'weekly', label: 'Plusieurs fois par semaine', emoji: '🍽️' },
-  { value: 'weekend', label: 'Week-ends seulement', emoji: '🏠' },
-  { value: 'monthly', label: 'Occasionnellement', emoji: '🎉' },
-  { value: 'rarely', label: 'Rarement', emoji: '🥡' }
-];
 
 // Tags populaires pour les sessions
 export const POPULAR_TAGS = [
