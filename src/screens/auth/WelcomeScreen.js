@@ -1,64 +1,44 @@
-// src/screens/auth/LoginScreen.js
-import React, { useState } from 'react';
+// src/screens/auth/WelcomeScreen.js
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert
+  Animated,
+  Dimensions,
+  TouchableOpacity
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
-import { Input } from '../../components/common';
-import { useAuthStore } from '../../stores/authStore';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../utils/constants';
 
-const LoginScreen = ({ navigation }) => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [errors, setErrors] = useState({});
-  
-  const { signIn, loading } = useAuthStore();
+const { width } = Dimensions.get('window');
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email requis';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email invalide';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Mot de passe requis';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Minimum 6 caractères';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+const WelcomeScreen = ({ navigation }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-    
-    try {
-      const result = await signIn(formData.email, formData.password);
-      
-      if (result.success) {
-        // Navigation handled by auth state change
-      } else {
-        Alert.alert('Erreur de connexion', result.error);
-      }
-    } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue');
-    }
-  };
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   return (
     <LinearGradient
@@ -66,87 +46,90 @@ const LoginScreen = ({ navigation }) => {
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
+        {/* Illustration placeholder - remplacez par votre SVG */}
+        <Animated.View 
+          style={[
+            styles.illustrationContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }]
+            }
+          ]}
         >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
+          <View style={styles.illustration}>
+            {/* Cercles organiques inspirés de votre design */}
+            <View style={[styles.circle, styles.circle1]} />
+            <View style={[styles.circle, styles.circle2]} />
+            <View style={[styles.circle, styles.circle3]} />
+            <View style={styles.chefHat}>
+              <Text style={styles.chefEmoji}>👨‍🍳</Text>
+            </View>
+            {/* Éléments décoratifs */}
+            <View style={[styles.decorElement, styles.element1]}>🥕</View>
+            <View style={[styles.decorElement, styles.element2]}>🌿</View>
+            <View style={[styles.decorElement, styles.element3]}>🍅</View>
+          </View>
+        </Animated.View>
+
+        {/* Texte principal */}
+        <Animated.View 
+          style={[
+            styles.textContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <Text style={styles.title}>
+            You <Text style={styles.highlightText}>cook</Text>, you{' '}
+            <Text style={styles.highlightText}>share</Text>, you{'\n'}
+            <Text style={styles.highlightText}>inspire</Text>...
+          </Text>
+          
+          <Text style={styles.subtitle}>
+            Rejoignez la plus grande communauté de passionnés de cuisine.
+            Partagez vos créations et découvrez de nouvelles saveurs.
+          </Text>
+        </Animated.View>
+
+        {/* Boutons d'action */}
+        <Animated.View 
+          style={[
+            styles.buttonContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <Button
+            title="Commencer l'aventure"
+            onPress={() => navigation.navigate('Register')}
+            style={styles.primaryButton}
+            variant="primary"
+            size="large"
+          />
+          
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Login')}
+            style={styles.secondaryButton}
           >
-            {/* Header avec illustration */}
-            <View style={styles.header}>
-              <View style={styles.logoContainer}>
-                <View style={[styles.circle, styles.loginCircle1]} />
-                <View style={[styles.circle, styles.loginCircle2]} />
-                <Text style={styles.logoEmoji}>👨‍🍳</Text>
-              </View>
-              
-              <Text style={styles.headerTitle}>Bon retour !</Text>
-              <Text style={styles.headerSubtitle}>
-                Connectez-vous pour retrouver votre communauté culinaire
-              </Text>
-            </View>
+            <Text style={styles.secondaryButtonText}>
+              Déjà membre ? Se connecter
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-            {/* Formulaire */}
-            <View style={styles.formContainer}>
-              <Input
-                label="Email"
-                placeholder="votre@email.com"
-                value={formData.email}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-                error={errors.email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                leftIcon={<Text style={styles.inputIcon}>📧</Text>}
-              />
-
-              <Input
-                label="Mot de passe"
-                placeholder="Votre mot de passe"
-                value={formData.password}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
-                error={errors.password}
-                secureTextEntry
-                leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
-              />
-
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('ForgotPassword')}
-                style={styles.forgotPassword}
-              >
-                <Text style={styles.forgotPasswordText}>
-                  Mot de passe oublié ?
-                </Text>
-              </TouchableOpacity>
-
-              <Button
-                title="Se connecter"
-                onPress={handleSubmit}
-                loading={loading}
-                style={styles.submitButton}
-                size="large"
-              />
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Pas encore de compte ?{' '}
-                <Text 
-                  style={styles.footerLink}
-                  onPress={() => navigation.navigate('Register')}
-                >
-                  S'inscrire
-                </Text>
-              </Text>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+        {/* Indicateur de scroll ou version */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>PlateUp v1.0</Text>
+        </View>
       </SafeAreaView>
     </LinearGradient>
   );
 };
+
 // Styles communs pour tous les écrans
 const styles = StyleSheet.create({
   container: {
@@ -385,4 +368,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { LoginScreen};
+export { WelcomeScreen };

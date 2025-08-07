@@ -1,6 +1,6 @@
 // src/stores/sessionStore.js
 import { create } from 'zustand'
-import { sessionsService } from '../services/sessions'
+import { sessionsService } from '../services/sessions.js'
 
 export const useSessionStore = create((set, get) => ({
   // État

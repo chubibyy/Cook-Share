@@ -1,9 +1,9 @@
-// src/stores/authStore.js
+// src/stores/authStore.js - Store mis à jour avec les nouveaux services
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { authService } from '../services/auth'
-import { supabase,supabaseHelpers } from '../services/supabase'
+import { supabase, supabaseHelpers } from '../services/supabase'
 
 export const useAuthStore = create(
   persist(
@@ -20,6 +20,7 @@ export const useAuthStore = create(
       setSession: (session) => set({ session }),
       setLoading: (loading) => set({ loading }),
       setError: (error) => set({ error }),
+      clearError: () => set({ error: null }),
       
       // Initialisation de l'authentification
       initialize: async () => {
@@ -29,12 +30,12 @@ export const useAuthStore = create(
           const session = await authService.getSession()
           
           if (session?.user) {
-            // Récupérer le profil utilisateur complet
+            // Récupérer le profil utilisateur complet depuis la table users
             const profile = await supabaseHelpers.getUserProfile(session.user.id)
             
             set({
               session,
-              user: { ...session.user, ...profile },
+              user: profile ? { ...session.user, ...profile } : session.user,
               isInitialized: true,
               loading: false
             })
@@ -56,24 +57,21 @@ export const useAuthStore = create(
         }
       },
 
-      // Connexion
-      signIn: async (email, password) => {
+      // Inscription
+      signUp: async (email, password, metadata = {}) => {
         try {
           set({ loading: true, error: null })
           
-          const { user, session } = await authService.signIn(email, password)
+          const result = await authService.signUp(email, password, metadata)
           
-          if (user) {
-            const profile = await supabaseHelpers.getUserProfile(user.id)
-            
-            set({
-              session,
-              user: { ...user, ...profile },
-              loading: false,
-              error: null
-            })
-            
-            return { success: true }
+          set({ loading: false })
+          
+          return { 
+            success: true, 
+            needsEmailConfirmation: result.needsEmailConfirmation,
+            message: result.needsEmailConfirmation 
+              ? 'Vérifiez votre email pour confirmer votre compte' 
+              : 'Compte créé avec succès'
           }
         } catch (error) {
           set({ 
@@ -84,17 +82,25 @@ export const useAuthStore = create(
         }
       },
 
-      // Inscription
-      signUp: async (email, password, metadata = {}) => {
+      // Connexion
+      signIn: async (email, password) => {
         try {
           set({ loading: true, error: null })
           
-          const { user } = await authService.signUp(email, password, metadata)
+          const { user, session } = await authService.signIn(email, password)
           
-          set({ loading: false })
-          return { 
-            success: true, 
-            message: 'Vérifiez votre email pour confirmer votre compte' 
+          if (user && session) {
+            // Récupérer le profil complet
+            const profile = await supabaseHelpers.getUserProfile(user.id)
+            
+            set({
+              session,
+              user: profile ? { ...user, ...profile } : user,
+              loading: false,
+              error: null
+            })
+            
+            return { success: true }
           }
         } catch (error) {
           set({ 
@@ -129,7 +135,25 @@ export const useAuthStore = create(
         }
       },
 
-      // Mise à jour du profil
+      // Récupération de mot de passe
+      resetPassword: async (email) => {
+        try {
+          set({ loading: true, error: null })
+          
+          await authService.resetPassword(email)
+          
+          set({ loading: false })
+          return { success: true }
+        } catch (error) {
+          set({ 
+            error: error.message, 
+            loading: false 
+          })
+          return { success: false, error: error.message }
+        }
+      },
+
+      // Mise à jour du profil utilisateur
       updateProfile: async (updates) => {
         try {
           const { user } = get()
@@ -137,17 +161,36 @@ export const useAuthStore = create(
 
           set({ loading: true, error: null })
 
+          // Upload de l'avatar si fourni
+          let avatarUrl = user.avatar_url
+          if (updates.avatar && typeof updates.avatar === 'object') {
+            const uploadResult = await supabaseHelpers.uploadAvatar(updates.avatar, user.id)
+            avatarUrl = uploadResult.url
+          }
+
+          // Préparer les données de mise à jour
+          const profileData = {
+            ...updates,
+            avatar_url: avatarUrl
+          }
+
+          // Supprimer l'objet avatar des données à envoyer
+          delete profileData.avatar
+
           // Mise à jour en base
           const { error } = await supabase
             .from('users')
-            .update(updates)
+            .update({
+              ...profileData,
+              updated_at: new Date().toISOString()
+            })
             .eq('id', user.id)
 
           if (error) throw error
 
           // Mise à jour du store
           set({
-            user: { ...user, ...updates },
+            user: { ...user, ...profileData, avatar_url: avatarUrl },
             loading: false
           })
 
@@ -162,18 +205,83 @@ export const useAuthStore = create(
       },
 
       // Ajouter de l'XP
-      addXP: (xpAmount) => {
-        const { user } = get()
-        if (user) {
-          const newXP = user.xp + xpAmount
+      addXP: async (xpAmount, reason = 'activity') => {
+        try {
+          const { user } = get()
+          if (!user) return
+
+          const newXP = (user.xp || 0) + xpAmount
+          
+          // Mettre à jour en base
+          const { error } = await supabase
+            .from('users')
+            .update({ 
+              xp: newXP,
+              last_activity: new Date().toISOString()
+            })
+            .eq('id', user.id)
+
+          if (error) throw error
+
+          // Mettre à jour le store
           set({
             user: { ...user, xp: newXP }
           })
+
+          // Optionnel: créer une notification pour le gain d'XP
+          if (xpAmount > 0) {
+            await supabase
+              .from('notifications')
+              .insert([{
+                user_id: user.id,
+                type: 'xp_gained',
+                message: `Vous avez gagné ${xpAmount} XP pour ${reason}`,
+                is_read: false
+              }])
+          }
+
+          return { success: true, newXP, xpGained: xpAmount }
+        } catch (error) {
+          console.error('Erreur ajout XP:', error)
+          return { success: false, error: error.message }
         }
       },
 
-      // Reset de l'erreur
-      clearError: () => set({ error: null })
+      // Confirmer l'email
+      confirmEmail: async (token) => {
+        try {
+          set({ loading: true, error: null })
+          
+          const result = await authService.confirmEmail(token)
+          
+          set({ loading: false })
+          return { success: true, data: result }
+        } catch (error) {
+          set({ 
+            error: error.message, 
+            loading: false 
+          })
+          return { success: false, error: error.message }
+        }
+      },
+
+      // Connexion OAuth
+      signInWithOAuth: async (provider) => {
+        try {
+          set({ loading: true, error: null })
+          
+          const result = await authService.signInWithOAuth(provider)
+          
+          // La redirection se fera automatiquement
+          return { success: true, data: result }
+        } catch (error) {
+          set({ 
+            error: error.message, 
+            loading: false 
+          })
+          return { success: false, error: error.message }
+        }
+      }
     }),
     {
       name: 'plateup-auth',
@@ -187,3 +295,13 @@ export const useAuthStore = create(
   )
 )
 
+// Hook personnalisé pour l'authentification
+export const useAuth = () => {
+  const store = useAuthStore()
+  
+  return {
+    ...store,
+    isAuthenticated: !!(store.user && store.session),
+    isProfileComplete: !!(store.user?.username && store.user?.onboarding_completed),
+  }
+}
