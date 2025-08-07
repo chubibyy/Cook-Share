@@ -177,24 +177,28 @@ export const supabaseHelpers = {
 
       // Insère un profil par défaut si aucun n'est trouvé
       if (!existing) {
-        const { error: insertError } = await supabase.from('users').insert({
-          id: user.id,
-          email: user.email,
-          username: user.email?.split('@')[0] || 'user',
-          bio: '',
-          avatar_url: null,
-          cook_frequency: null,
-          cook_constraints: [],
-          xp: 0,
-          is_private: false,
-          created_at: new Date().toISOString(),
-          last_seen: new Date().toISOString(),
-        })
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert(
+            {
+              id: user.id,
+              email: user.email,
+              username: user.email?.split('@')[0] || 'user',
+              bio: '',
+              avatar_url: null,
+              cook_frequency: null,
+              cook_constraints: [],
+              xp: 0,
+              is_private: false,
+              created_at: new Date().toISOString(),
+              last_seen: new Date().toISOString(),
+            },
+            { onConflict: 'id', ignoreDuplicates: true }
+          )
 
-        if (insertError) throw insertError
+        if (insertError && insertError.code !== '23505') throw insertError
       }
 
-      // Retourner le profil complet avec statistiques
       return await this.getUserProfile(user.id)
     } catch (err) {
       console.error('Erreur ensureUserProfile:', err)
