@@ -3,10 +3,6 @@ import { create } from 'zustand'
 import { sessionsService } from '../services/sessions.js'
 import { useAuthStore } from './authStore'
 
-Copier
-Modifier
-
-
 export const useSessionStore = create((set, get) => ({
   // État
   sessions: [],

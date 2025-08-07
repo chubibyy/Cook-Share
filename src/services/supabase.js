@@ -165,7 +165,6 @@ export const supabaseHelpers = {
   // Créer un profil utilisateur s'il n'existe pas
   async ensureUserProfile(user) {
     if (!user?.id) return null
-
     try {
       // Vérifie si le profil existe déjà
       const { data: existing, error: selectError } = await supabase
