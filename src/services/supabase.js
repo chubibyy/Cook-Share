@@ -189,20 +189,64 @@ export const supabaseHelpers = {
     }
   },
 
+  // Créer un profil utilisateur s'il n'existe pas
+  async ensureUserProfile(user) {
+    try {
+      if (!user?.id) return null
+
+      // Vérifier si un profil existe déjà
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (error) throw error
+
+      // Insérer le profil par défaut s'il n'existe pas
+      if (!data) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email,
+            username: user.email?.split('@')[0] || 'user',
+            bio: '',
+            avatar_url: null,
+            cook_frequency: null,
+            cook_constraints: [],
+            xp: 0,
+            is_private: false,
+            created_at: new Date().toISOString(),
+            last_seen: new Date().toISOString()
+          })
+
+        if (insertError) throw insertError
+      }
+
+      // Retourner le profil complet avec statistiques
+      return await this.getUserProfile(user.id)
+    } catch (err) {
+      console.error('Erreur ensureUserProfile:', err)
+      return null
+    }
+  },
+
   // Obtenir le profil utilisateur complet avec stats
   async getUserProfile(userId) {
     try {
       const { data, error } = await supabase
         .from('users')
+        // Explicit FK reference to avoid ambiguous join on challenge_participants
         .select(`
           *,
           sessions_count:cooking_sessions(count),
           followers_count:followers!followed_id(count),
           following_count:followers!follower_id(count),
-          challenges_completed:challenge_participants!inner(count)
+          challenges_completed:challenge_participants!user_id(count)
         `)
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data

@@ -19,31 +19,6 @@ export const authService = {
       
       if (authError) throw authError
 
-      // 2. Si l'utilisateur est créé, créer son profil dans la table users
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([{
-            id: authData.user.id,
-            email: email,
-            username: metadata.username || email.split('@')[0],
-            bio: metadata.bio || '',
-            avatar_url: null,
-            cook_frequency: null,
-            cook_constraints: [],
-            xp: 0,
-            is_private: false,
-            onboarding_completed: false,
-            created_at: new Date().toISOString(),
-            last_seen: new Date().toISOString()
-          }])
-
-        if (profileError) {
-          console.warn('Erreur création profil:', profileError)
-          // On continue même si le profil n'est pas créé
-        }
-      }
-
       return {
         user: authData.user,
         session: authData.session,
