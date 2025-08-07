@@ -93,6 +93,7 @@ export const useAuthStore = create(
             // S'assurer que le profil existe et le récupérer
             const profile = await supabaseHelpers.ensureUserProfile(user)
 
+
             set({
               session,
               user: profile ? { ...user, ...profile } : user,

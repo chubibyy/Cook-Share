@@ -2,10 +2,9 @@
 // App.js Final - Version Production Complète
 import React, { useEffect } from 'react';
 import { LogBox, Alert, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppNavigator } from './src/navigation/AppNavigator';
+import AppNavigator  from './src/navigation/AppNavigator';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { useAuthStore } from './src/stores/authStore';
 import { ENV } from './src/utils/env';

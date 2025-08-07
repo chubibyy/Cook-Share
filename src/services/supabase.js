@@ -193,7 +193,6 @@ export const supabaseHelpers = {
   async ensureUserProfile(user) {
     try {
       if (!user?.id) return null
-
       // Vérifier si un profil existe déjà
       const { data, error } = await supabase
         .from('users')
@@ -202,7 +201,6 @@ export const supabaseHelpers = {
         .maybeSingle()
 
       if (error) throw error
-
       // Insérer le profil par défaut s'il n'existe pas
       if (!data) {
         const { error: insertError } = await supabase
@@ -223,12 +221,14 @@ export const supabaseHelpers = {
 
         if (insertError) throw insertError
       }
-
       // Retourner le profil complet avec statistiques
       return await this.getUserProfile(user.id)
     } catch (err) {
       console.error('Erreur ensureUserProfile:', err)
       return null
+      } else if (error) {
+        throw error
+      }
     }
   },
 
