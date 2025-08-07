@@ -167,16 +167,17 @@ export const supabaseHelpers = {
     if (!user?.id) return null
 
     try {
-      // Vérifier si un profil existe déjà
-      const { data, error } = await supabase
+      // Vérifie si le profil existe déjà
+      const { data: existing, error: selectError } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
         .maybeSingle()
-      if (error) throw error
 
-      // Insérer le profil par défaut s'il n'existe pas
-      if (!data) {
+      if (selectError) throw selectError
+
+      // Insère un profil par défaut si aucun n'est trouvé
+      if (!existing) {
         const { error: insertError } = await supabase.from('users').insert({
           id: user.id,
           email: user.email,
@@ -190,10 +191,10 @@ export const supabaseHelpers = {
           created_at: new Date().toISOString(),
           last_seen: new Date().toISOString(),
         })
+
         if (insertError) throw insertError
       }
 
-      // Retourner le profil complet avec statistiques
       return await this.getUserProfile(user.id)
     } catch (err) {
       console.error('Erreur ensureUserProfile:', err)
