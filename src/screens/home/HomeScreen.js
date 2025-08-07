@@ -1,4 +1,3 @@
-// Exemple d'écran Home Screen minimal pour démarrer
 // src/screens/home/HomeScreen.js
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
@@ -6,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { Header } from '../../components/layout/Header';
 import Button from '../../components/common/Button';
-import { COLORS, SPACING, TYPOGRAPHY } from '../../utils/constants';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants';
 
 export const HomeScreen = ({ navigation }) => {
   const { user, signOut, addXP } = useAuthStore();

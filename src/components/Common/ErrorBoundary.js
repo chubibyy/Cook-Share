@@ -123,3 +123,5 @@ const styles = StyleSheet.create({
     minWidth: 150,
   },
 });
+
+export  {ErrorBoundary}
