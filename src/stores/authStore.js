@@ -30,9 +30,8 @@ export const useAuthStore = create(
           const session = await authService.getSession()
           
           if (session?.user) {
-            // Créer le profil s'il n'existe pas puis le récupérer
-            await supabaseHelpers.ensureUserProfile(session.user)
-            const profile = await supabaseHelpers.getUserProfile(session.user.id)
+            // Créer le profil s'il n'existe pas et le récupérer
+            const profile = await supabaseHelpers.ensureUserProfile(session.user)
 
             set({
               session,
@@ -91,9 +90,9 @@ export const useAuthStore = create(
           const { user, session } = await authService.signIn(email, password)
 
           if (user && session) {
-            // S'assurer que le profil existe puis le récupérer
-            await supabaseHelpers.ensureUserProfile(user)
-            const profile = await supabaseHelpers.getUserProfile(user.id)
+            // S'assurer que le profil existe et le récupérer
+            const profile = await supabaseHelpers.ensureUserProfile(user)
+
 
             set({
               session,
