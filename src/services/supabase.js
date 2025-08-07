@@ -167,33 +167,39 @@ export const supabaseHelpers = {
     if (!user?.id) return null
 
     try {
-      // Vérifier si un profil existe déjà
-      const { data, error } = await supabase
+      // Vérifie si le profil existe déjà
+      const { data: existing, error: selectError } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
         .maybeSingle()
-      if (error) throw error
 
-      // Insérer le profil par défaut s'il n'existe pas
-      if (!data) {
-        const { error: insertError } = await supabase.from('users').insert({
-          id: user.id,
-          email: user.email,
-          username: user.email?.split('@')[0] || 'user',
-          bio: '',
-          avatar_url: null,
-          cook_frequency: null,
-          cook_constraints: [],
-          xp: 0,
-          is_private: false,
-          created_at: new Date().toISOString(),
-          last_seen: new Date().toISOString(),
-        })
-        if (insertError) throw insertError
+      if (selectError) throw selectError
+
+      // Insère un profil par défaut si aucun n'est trouvé
+      if (!existing) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert(
+            {
+              id: user.id,
+              email: user.email,
+              username: user.email?.split('@')[0] || 'user',
+              bio: '',
+              avatar_url: null,
+              cook_frequency: null,
+              cook_constraints: [],
+              xp: 0,
+              is_private: false,
+              created_at: new Date().toISOString(),
+              last_seen: new Date().toISOString(),
+            },
+            { onConflict: 'id', ignoreDuplicates: true }
+          )
+
+        if (insertError && insertError.code !== '23505') throw insertError
       }
 
-      // Retourner le profil complet avec statistiques
       return await this.getUserProfile(user.id)
     } catch (err) {
       console.error('Erreur ensureUserProfile:', err)
