@@ -403,27 +403,30 @@ const OnboardingScreen = ({ navigation }) => {
             { transform: [{ translateX: slideAnim }] }
           ]}
         >
-          <ScrollView
-            style={[styles.step, { width }]}
-            contentContainerStyle={styles.stepContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderFoodPreferences()}
-          </ScrollView>
-          <ScrollView
-            style={[styles.step, { width }]}
-            contentContainerStyle={styles.stepContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderCookingProfile()}
-          </ScrollView>
-          <ScrollView
-            style={[styles.step, { width }]}
-            contentContainerStyle={styles.stepContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderProfileSetup()}
-          </ScrollView>
+          <View style={[styles.step, { width }]}> 
+            <ScrollView
+              contentContainerStyle={styles.stepContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {renderFoodPreferences()}
+            </ScrollView>
+          </View>
+          <View style={[styles.step, { width }]}> 
+            <ScrollView
+              contentContainerStyle={styles.stepContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {renderCookingProfile()}
+            </ScrollView>
+          </View>
+          <View style={[styles.step, { width }]}> 
+            <ScrollView
+              contentContainerStyle={styles.stepContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {renderProfileSetup()}
+            </ScrollView>
+          </View>
         </Animated.View>
 
         {/* Navigation Button */}
@@ -485,10 +488,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   step: {
+    flex: 1,
     paddingHorizontal: SPACING.lg,
   },
-  stepContainer: {
-    flex: 1,
+  stepContent: {
+    flexGrow: 1,
     paddingTop: SPACING.lg,
   },
   stepTitle: {
