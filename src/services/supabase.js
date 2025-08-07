@@ -194,12 +194,13 @@ export const supabaseHelpers = {
     try {
       const { data, error } = await supabase
         .from('users')
+        // Explicit FK reference to avoid ambiguous join on challenge_participants
         .select(`
           *,
           sessions_count:cooking_sessions(count),
           followers_count:followers!followed_id(count),
           following_count:followers!follower_id(count),
-          challenges_completed:challenge_participants!inner(count)
+          challenges_completed:challenge_participants!user_id(count)
         `)
         .eq('id', userId)
         .single()
