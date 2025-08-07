@@ -165,7 +165,6 @@ export const supabaseHelpers = {
   // Créer un profil utilisateur s'il n'existe pas
   async ensureUserProfile(user) {
     if (!user?.id) return null
-
     try {
       // Vérifier si un profil existe déjà
       const { data, error } = await supabase
@@ -174,7 +173,6 @@ export const supabaseHelpers = {
         .eq('id', user.id)
         .maybeSingle()
       if (error) throw error
-
       // Insérer le profil par défaut s'il n'existe pas
       if (!data) {
         const { error: insertError } = await supabase.from('users').insert({
@@ -192,7 +190,6 @@ export const supabaseHelpers = {
         })
         if (insertError) throw insertError
       }
-
       // Retourner le profil complet avec statistiques
       return await this.getUserProfile(user.id)
     } catch (err) {
