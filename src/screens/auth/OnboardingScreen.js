@@ -4,11 +4,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Dimensions,
   Animated,
-  TextInput
+  TextInput,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -188,21 +188,6 @@ const OnboardingScreen = ({ navigation }) => {
       <Text style={styles.stepTitle}>{steps[0].title}</Text>
       <Text style={styles.stepSubtitle}>{steps[0].subtitle}</Text>
       
-      {/* Zone de texte libre pour préférences */}
-      <View style={styles.textInputContainer}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Décrivez vos préférences culinaires..."
-          multiline
-          numberOfLines={4}
-          value={userData.foodPreferencesText}
-          onChangeText={(text) => setUserData(prev => ({ 
-            ...prev, 
-            foodPreferencesText: text 
-          }))}
-        />
-      </View>
-
       {/* Sélection des types de cuisine */}
       <Text style={styles.sectionTitle}>Types de cuisine préférés</Text>
       <View style={styles.optionsGrid}>
@@ -382,7 +367,10 @@ const OnboardingScreen = ({ navigation }) => {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return userData.foodPreferences.length > 0 || userData.foodPreferencesText?.trim();
+        return (
+          userData.foodPreferences.length > 0 ||
+          userData.dietaryRestrictions.length > 0
+        );
       case 1:
         return userData.cookingLevel && userData.cookingFrequency;
       case 2:
@@ -497,20 +485,6 @@ const styles = StyleSheet.create({
   },
   
   // Food Preferences Step
-  textInputContainer: {
-    marginBottom: SPACING.xl,
-  },
-  textInput: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.text,
-    textAlignVertical: 'top',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    minHeight: 100,
-  },
   sectionTitle: {
     fontSize: TYPOGRAPHY.sizes.lg,
     fontWeight: TYPOGRAPHY.weights.semibold,
