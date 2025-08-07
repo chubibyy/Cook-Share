@@ -199,7 +199,8 @@ export const supabaseHelpers = {
           sessions_count:cooking_sessions(count),
           followers_count:followers!followed_id(count),
           following_count:followers!follower_id(count),
-          challenges_completed:challenge_participants!inner(count)
+          -- Use explicit FK reference to avoid ambiguous join
+          challenges_completed:challenge_participants!user_id(count)
         `)
         .eq('id', userId)
         .single()
