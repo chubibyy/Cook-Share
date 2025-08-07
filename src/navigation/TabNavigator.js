@@ -74,6 +74,7 @@ const TabNavigator = () => {
         tabBarShowLabel: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tab.Screen

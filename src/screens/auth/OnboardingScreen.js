@@ -45,8 +45,10 @@ const OnboardingScreen = ({ navigation }) => {
     avatar: null
   });
 
-  const { updateProfile, user } = useAuthStore();
+  // Récupère juste ce dont on a besoin depuis le store (évite la reactivity foireuse)
+  const user = useAuthStore((s) => s.user);
   const completeOnboardingStore = useAuthStore((s) => s.completeOnboarding);
+
   const { takePhoto, pickImage } = useCamera();
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -112,7 +114,7 @@ const OnboardingScreen = ({ navigation }) => {
   const completeOnboarding = async () => {
     try {
       await completeOnboardingStore({
-        username: userData.username || user.email.split('@')[0],
+        username: userData.username || user?.email?.split('@')[0],
         bio: userData.bio,
         cook_frequency: userData.cookingFrequency,
         cook_constraints: [

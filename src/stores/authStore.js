@@ -74,10 +74,7 @@ export const useAuthStore = create(
               : 'Compte créé avec succès'
           }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
-          })
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       },
@@ -93,7 +90,6 @@ export const useAuthStore = create(
             // S'assurer que le profil existe et le récupérer
             const profile = await supabaseHelpers.ensureUserProfile(user)
 
-
             set({
               session,
               user: profile ? { ...user, ...profile } : user,
@@ -104,10 +100,7 @@ export const useAuthStore = create(
             return { success: true }
           }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
-          })
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       },
@@ -116,22 +109,11 @@ export const useAuthStore = create(
       signOut: async () => {
         try {
           set({ loading: true })
-          
           await authService.signOut()
-          
-          set({
-            user: null,
-            session: null,
-            loading: false,
-            error: null
-          })
-          
+          set({ user: null, session: null, loading: false, error: null })
           return { success: true }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
-          })
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       },
@@ -140,21 +122,16 @@ export const useAuthStore = create(
       resetPassword: async (email) => {
         try {
           set({ loading: true, error: null })
-          
           await authService.resetPassword(email)
-          
           set({ loading: false })
           return { success: true }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
-          })
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       },
 
-      // Mise à jour du profil utilisateur
+      // Mise à jour du profil utilisateur (générique)
       updateProfile: async (updates) => {
         try {
           const { user } = get()
@@ -174,8 +151,6 @@ export const useAuthStore = create(
             ...updates,
             avatar_url: avatarUrl
           }
-
-          // Supprimer l'objet avatar des données à envoyer
           delete profileData.avatar
 
           // Mise à jour en base
@@ -183,7 +158,7 @@ export const useAuthStore = create(
             .from('users')
             .update({
               ...profileData,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString() // si la colonne n'existe pas, retire cette ligne
             })
             .eq('id', user.id)
 
@@ -197,10 +172,72 @@ export const useAuthStore = create(
 
           return { success: true }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
+          set({ error: error.message, loading: false })
+          return { success: false, error: error.message }
+        }
+      },
+
+      // ✅ Terminer l'onboarding (upload avatar + upsert user + refresh profil)
+      completeOnboarding: async ({
+        username,
+        bio,
+        cook_frequency,
+        cook_constraints, // string[]
+        cooking_level,    // string
+        cooking_for,      // string[]
+        avatar            // { uri, type, name } | null
+      }) => {
+        try {
+          const { user } = get()
+          if (!user?.id) throw new Error('Utilisateur non connecté')
+
+          set({ loading: true, error: null })
+
+          // 1) Upload avatar (optionnel) via helpers existants
+          let avatar_url = user.avatar_url || null
+          if (avatar && typeof avatar === 'object') {
+            const res = await supabaseHelpers.uploadAvatar(avatar, user.id)
+            avatar_url = res?.url || avatar_url
+          }
+
+          // 2) Upsert du profil utilisateur
+          const payload = {
+            id: user.id,
+            email: user.email,
+            username,
+            bio,
+            cook_frequency,
+            cook_constraints,
+            cooking_level,
+            cooking_for,
+            ...(avatar_url ? { avatar_url } : {}),
+            onboarding_completed: true,
+            last_seen: new Date().toISOString(),
+          }
+
+          const { error: upsertErr } = await supabase.from('users').upsert(payload)
+          if (upsertErr) throw upsertErr
+
+          // 3) Recharger la ligne users
+          const { data: fresh, error: profErr } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle()
+
+          if (profErr) throw profErr
+
+          // 4) Mettre à jour le store (on garde session, on remplace profil)
+          set({
+            user: { ...user, ...fresh },
+            loading: false,
+            error: null
           })
+
+          return { success: true }
+        } catch (error) {
+          console.error('Erreur completeOnboarding:', error)
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       },
@@ -225,11 +262,9 @@ export const useAuthStore = create(
           if (error) throw error
 
           // Mettre à jour le store
-          set({
-            user: { ...user, xp: newXP }
-          })
+          set({ user: { ...user, xp: newXP } })
 
-          // Optionnel: créer une notification pour le gain d'XP
+          // Optionnel: notification de gain d'XP
           if (xpAmount > 0) {
             await supabase
               .from('notifications')
@@ -252,16 +287,11 @@ export const useAuthStore = create(
       confirmEmail: async (token) => {
         try {
           set({ loading: true, error: null })
-          
           const result = await authService.confirmEmail(token)
-          
           set({ loading: false })
           return { success: true, data: result }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
-          })
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       },
@@ -270,16 +300,11 @@ export const useAuthStore = create(
       signInWithOAuth: async (provider) => {
         try {
           set({ loading: true, error: null })
-          
           const result = await authService.signInWithOAuth(provider)
-          
           // La redirection se fera automatiquement
           return { success: true, data: result }
         } catch (error) {
-          set({ 
-            error: error.message, 
-            loading: false 
-          })
+          set({ error: error.message, loading: false })
           return { success: false, error: error.message }
         }
       }
@@ -299,7 +324,6 @@ export const useAuthStore = create(
 // Hook personnalisé pour l'authentification
 export const useAuth = () => {
   const store = useAuthStore()
-  
   return {
     ...store,
     isAuthenticated: !!(store.user && store.session),
