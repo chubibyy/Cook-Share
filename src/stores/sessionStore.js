@@ -1,6 +1,6 @@
 // src/stores/sessionStore.js
 import { create } from 'zustand'
-import { sessionsService } from '../services/session.js'
+import { sessionsService } from '../services/sessions.js'
 import { useAuthStore } from './authStore'
 
 export const useSessionStore = create((set, get) => ({
