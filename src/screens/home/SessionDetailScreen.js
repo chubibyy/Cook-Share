@@ -12,7 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -46,14 +47,22 @@ export const SessionDetailScreen = ({ route, navigation }) => {
   }, [sessionId, getSessionById]);
 
   const handleLike = async () => {
-    if (currentSession) {
+    if (!currentSession) return;
+    try {
       await toggleLike(currentSession.id);
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la mise à jour du like.');
     }
   };
 
   const handleSave = async () => {
-    if (currentSession) {
+    if (!currentSession) return;
+    try {
       await toggleSave(currentSession.id);
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la sauvegarde.');
     }
   };
 
@@ -67,9 +76,20 @@ export const SessionDetailScreen = ({ route, navigation }) => {
       Alert.alert('Succès', 'Commentaire ajouté !');
     } catch (error) {
       console.error('Error adding comment:', error);
-      Alert.alert('Erreur', 'Impossible d\'ajouter le commentaire');
+      Alert.alert('Erreur', "Impossible d'ajouter le commentaire");
     } finally {
       setCommentLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!currentSession) return;
+    try {
+      await Share.share({
+        message: `Découvrez cette session de cuisine sur CookShare: ${currentSession.title}\n#CookShareApp`,
+      });
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de partager la session.');
     }
   };
 
@@ -234,7 +254,7 @@ export const SessionDetailScreen = ({ route, navigation }) => {
                 </Text>
               </View>
 
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
                 <Text style={styles.actionButtonIcon}>📤</Text>
                 <Text style={styles.actionButtonText}>Partager</Text>
               </TouchableOpacity>
