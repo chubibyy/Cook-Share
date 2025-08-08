@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 import { HomeScreen } from '../screens/home/HomeScreen';
+import { SessionDetailScreen } from '../screens/home/SessionDetailScreen';
 import { ChallengesScreen } from '../screens/challenges/ChallengesScreen';
 import { ClubsScreen } from '../screens/clubs/ClubsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -49,6 +50,7 @@ const CreateButton = () => {
 const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HomeScreen" component={HomeScreen} />
+    <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
   </Stack.Navigator>
 );
 

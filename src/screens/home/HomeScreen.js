@@ -50,6 +50,7 @@ export const HomeScreen = ({ navigation }) => {
   }, [hasMore, loading, loadMore]);
 
   const handleSessionPress = (session) => {
+    console.log('Navigating to session detail:', session.id);
     navigation.navigate('SessionDetail', { sessionId: session.id });
   };
 

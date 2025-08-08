@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm start)",
-      "Bash(expo start:*)"
+      "Bash(expo start:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }
