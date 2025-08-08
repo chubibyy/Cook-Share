@@ -1,14 +1,76 @@
 // src/screens/home/HomeScreen.js
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useCallback, useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
+import { useSessionStore } from '../../stores/sessionStore';
 import { Header } from '../../components/layout/Header';
+import { SessionCard } from '../../components/cards/SessionCard';
 import Button from '../../components/common/Button';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants';
 
 export const HomeScreen = ({ navigation }) => {
   const { user, signOut, addXP } = useAuthStore();
+  const { 
+    sessions, 
+    loading, 
+    hasMore, 
+    loadFeed, 
+    loadMore, 
+    refresh, 
+    toggleLike, 
+    toggleSave 
+  } = useSessionStore();
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadFeed(true);
+  }, [loadFeed]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
+
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !loading) {
+      loadMore();
+    }
+  }, [hasMore, loading, loadMore]);
+
+  const handleSessionPress = (session) => {
+    navigation.navigate('SessionDetail', { sessionId: session.id });
+  };
+
+  const handleUserPress = (user) => {
+    navigation.navigate('Profile', { userId: user.id });
+  };
+
+  const handleLike = async (sessionId) => {
+    await toggleLike(sessionId);
+  };
+
+  const handleSave = async (sessionId) => {
+    await toggleSave(sessionId);
+  };
+
+  const handleComment = (session) => {
+    navigation.navigate('SessionDetail', { 
+      sessionId: session.id, 
+      focusComment: true 
+    });
+  };
 
   const handleTestXP = async () => {
     const result = await addXP(50, 'test');
@@ -17,11 +79,73 @@ export const HomeScreen = ({ navigation }) => {
     }
   };
 
+  const renderSession = ({ item: session }) => {
+    console.log('Rendering session:', session.id)
+    console.log('Session photo_url:', session.photo_url)
+    console.log('Full session data:', session)
+    
+    return (
+      <SessionCard
+        session={session}
+        onPress={handleSessionPress}
+        onUserPress={handleUserPress}
+        onLike={handleLike}
+        onSave={handleSave}
+        onComment={handleComment}
+        style={styles.sessionCard}
+      />
+    )
+  };
+
+  const renderEmptyFeed = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>🍳</Text>
+      <Text style={styles.emptyTitle}>Votre feed est vide</Text>
+      <Text style={styles.emptyText}>
+        Soyez le premier à partager une création culinaire !
+      </Text>
+      <Button
+        title="Créer ma première session"
+        onPress={() => navigation.navigate('CreateSession')}
+        style={styles.createButton}
+      />
+    </View>
+  );
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+      </View>
+    );
+  };
+
+  const renderHeader = () => (
+    <View style={styles.feedHeader}>
+      <View style={styles.welcomeSection}>
+        <Text style={styles.welcomeText}>
+          Bonjour {user?.username || 'Chef'} ! 👋
+        </Text>
+        <TouchableOpacity 
+          style={styles.createSessionButton}
+          onPress={() => navigation.navigate('CreateSession')}
+        >
+          <Text style={styles.createSessionText}>➕ Partager une création</Text>
+        </TouchableOpacity>
+      </View>
+      
+      {sessions.length > 0 && (
+        <Text style={styles.sectionTitle}>🔥 Dernières créations</Text>
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <Header
         title="PlateUp"
-        subtitle="Bienvenue dans votre communauté culinaire"
+        subtitle="Votre communauté culinaire"
         user={user}
         showAvatar={true}
         showXPBar={true}
@@ -30,100 +154,45 @@ export const HomeScreen = ({ navigation }) => {
         onAvatarPress={() => navigation.navigate('Profile')}
       />
       
-      <ScrollView style={styles.content}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>
-            Salut {user?.username || 'Chef'} ! 👋
-          </Text>
-          <Text style={styles.welcomeText}>
-            Votre profil est maintenant configuré. Il est temps de commencer votre aventure culinaire !
-          </Text>
+      <FlatList
+        data={sessions}
+        renderItem={renderSession}
+        keyExtractor={(item) => item.id.toString()}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={!loading ? renderEmptyFeed : null}
+        ListFooterComponent={renderFooter}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.1}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.feedContainer}
+      />
+
+      {/* Debug section pour développement */}
+      {__DEV__ && (
+        <View style={styles.debugSection}>
+          <Button
+            title="Test +50 XP"
+            onPress={handleTestXP}
+            variant="outline"
+            size="small"
+            style={{ marginRight: SPACING.sm }}
+          />
+          <Button
+            title="Déconnexion"
+            onPress={signOut}
+            variant="outline"
+            size="small"
+          />
         </View>
-
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>🚀 Premiers pas</Text>
-          
-          <View style={styles.actionCard}>
-            <Text style={styles.actionTitle}>📸 Partagez votre première création</Text>
-            <Text style={styles.actionDescription}>
-              Prenez une photo de votre plat et partagez-la avec la communauté
-            </Text>
-            <Button
-              title="Créer ma première session"
-              onPress={() => navigation.navigate('Create')}
-              style={styles.actionButton}
-            />
-          </View>
-
-          <View style={styles.actionCard}>
-            <Text style={styles.actionTitle}>🎯 Relevez un défi</Text>
-            <Text style={styles.actionDescription}>
-              Participez aux challenges culinaires et gagnez de l'XP
-            </Text>
-            <Button
-              title="Voir les défis"
-              variant="outline"
-              onPress={() => navigation.navigate('Challenges')}
-              style={styles.actionButton}
-            />
-          </View>
-
-          <View style={styles.actionCard}>
-            <Text style={styles.actionTitle}>👥 Rejoignez un club</Text>
-            <Text style={styles.actionDescription}>
-              Trouvez des passionnés qui partagent vos goûts culinaires
-            </Text>
-            <Button
-              title="Explorer les clubs"
-              variant="secondary"
-              onPress={() => navigation.navigate('Clubs')}
-              style={styles.actionButton}
-            />
-          </View>
-        </View>
-
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>📊 Vos statistiques</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{user?.xp || 0}</Text>
-              <Text style={styles.statLabel}>XP Total</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Sessions</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Défis</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Section debug pour développement */}
-        {__DEV__ && (
-          <View style={styles.debugSection}>
-            <Text style={styles.sectionTitle}>🔧 Debug (Dev only)</Text>
-            <Button
-              title="Test +50 XP"
-              onPress={handleTestXP}
-              variant="outline"
-              size="small"
-              style={{ marginBottom: SPACING.sm }}
-            />
-            <Button
-              title="Se déconnecter"
-              onPress={signOut}
-              variant="outline"
-              size="small"
-            />
-          </View>
-        )}
-      </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -133,89 +202,92 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  content: {
-    flex: 1,
+  feedContainer: {
+    flexGrow: 1,
     paddingHorizontal: SPACING.md,
   },
+  feedHeader: {
+    marginBottom: SPACING.md,
+  },
   welcomeSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    padding: SPACING.lg,
-    marginVertical: SPACING.md,
-  },
-  welcomeTitle: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: TYPOGRAPHY.weights.bold,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
+    padding: SPACING.md,
+    marginVertical: SPACING.sm,
+    ...SHADOWS.sm,
   },
   welcomeText: {
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.textSecondary,
-    lineHeight: TYPOGRAPHY.sizes.base * 1.4,
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+    color: COLORS.text,
+    flex: 1,
   },
-  actionsSection: {
-    marginVertical: SPACING.md,
+  createSessionButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.sm,
+  },
+  createSessionText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.medium,
   },
   sectionTitle: {
     fontSize: TYPOGRAPHY.sizes.lg,
     fontWeight: TYPOGRAPHY.weights.bold,
     color: COLORS.text,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
   },
-  actionCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
+  sessionCard: {
+    marginVertical: SPACING.sm,
   },
-  actionTitle: {
-    fontSize: TYPOGRAPHY.sizes.base,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  actionDescription: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.md,
-    lineHeight: TYPOGRAPHY.sizes.sm * 1.4,
-  },
-  actionButton: {
-    alignSelf: 'flex-start',
-  },
-  statsSection: {
-    marginVertical: SPACING.md,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    ...SHADOWS.sm,
-  },
-  statItem: {
+  emptyContainer: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xxxl,
   },
-  statNumber: {
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: SPACING.lg,
+  },
+  emptyTitle: {
     fontSize: TYPOGRAPHY.sizes.xl,
     fontWeight: TYPOGRAPHY.weights.bold,
-    color: COLORS.primary,
-    marginBottom: SPACING.xs,
-  },
-  statLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textSecondary,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
     textAlign: 'center',
   },
+  emptyText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.xl,
+    lineHeight: TYPOGRAPHY.sizes.base * 1.4,
+  },
+  createButton: {
+    alignSelf: 'center',
+  },
+  footerLoader: {
+    paddingVertical: SPACING.lg,
+    alignItems: 'center',
+  },
   debugSection: {
-    marginVertical: SPACING.lg,
-    padding: SPACING.md,
+    position: 'absolute',
+    bottom: SPACING.md,
+    right: SPACING.md,
+    flexDirection: 'row',
     backgroundColor: COLORS.warning + '10',
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.sm,
+    padding: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.warning + '30',
+    ...SHADOWS.sm,
   },
 });

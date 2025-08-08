@@ -54,11 +54,30 @@ const SessionCard = ({
     >
       {/* Image principale avec overlay */}
       <View style={styles.imageContainer}>
-        <Image 
-          source={{ uri: session.photo_url }} 
-          style={styles.image}
-          resizeMode="cover"
-        />
+        {session.photo_url ? (
+          <Image 
+            source={{ uri: session.photo_url }} 
+            style={styles.image}
+            resizeMode="cover"
+            onError={(error) => {
+              console.error('Image load error for session:', session.id)
+              console.error('Photo URL:', session.photo_url)
+              console.error('Error details:', error.nativeEvent)
+            }}
+            onLoad={() => {
+              console.log('Image loaded successfully for session:', session.id)
+              console.log('Loaded URL:', session.photo_url)
+            }}
+            onLoadStart={() => {
+              console.log('Started loading image:', session.photo_url)
+            }}
+          />
+        ) : (
+          <View style={[styles.image, styles.placeholderImage]}>
+            <Text style={styles.placeholderText}>📷</Text>
+            <Text style={styles.placeholderSubText}>Pas d'image</Text>
+          </View>
+        )}
         
         {/* Overlay gradient pour lisibilité */}
         <LinearGradient
@@ -178,6 +197,20 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  placeholderImage: {
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderText: {
+    fontSize: 48,
+    opacity: 0.3,
+  },
+  placeholderSubText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
   },
   imageOverlay: {
     position: 'absolute',

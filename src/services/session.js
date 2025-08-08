@@ -48,19 +48,68 @@ export const sessionsService = {
   // Créer une nouvelle session culinaire
   async createSession(sessionData) {
     try {
-      const { data, error } = await supabase
+      console.log('=== SESSION CREATION DEBUG ===')
+      console.log('Original session data:', sessionData)
+      console.log('Current user from auth:', await supabase.auth.getUser())
+      
+      // Data object matching exactly the database schema
+      const cleanData = {
+        user_id: sessionData.user_id,
+        club_id: sessionData.club_id || null,
+        title: sessionData.title,
+        photo_url: sessionData.photo_url,
+        ingredients: sessionData.ingredients,
+        duration: sessionData.duration,
+        cuisine_type: sessionData.cuisine_type,
+        difficulty: sessionData.difficulty,
+        tags: sessionData.tags
+        // created_at is handled automatically by the database
+      }
+      
+      console.log('Clean data for insert:', cleanData)
+      
+      // Test: First try a simple insert without the select join
+      console.log('Attempting simple insert first...')
+      const { data: simpleData, error: simpleError } = await supabase
         .from('cooking_sessions')
-        .insert([sessionData])
-        .select(`
-          *,
-          user:users(*)
-        `)
+        .insert([cleanData])
+        .select('*')
         .single()
 
-      if (error) throw error
-      return data
+      if (simpleError) {
+        console.error('SIMPLE INSERT ERROR:', simpleError)
+        console.error('Error code:', simpleError.code)
+        console.error('Error message:', simpleError.message)
+        console.error('Error details:', simpleError.details)
+        throw simpleError
+      }
+      
+      console.log('Simple insert successful:', simpleData)
+      
+      // Now try to get the user data separately
+      console.log('Getting user data separately...')
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', cleanData.user_id)
+        .single()
+        
+      if (userError) {
+        console.error('USER SELECT ERROR:', userError)
+        // Continue even if user select fails
+      } else {
+        console.log('User data retrieved:', userData)
+        simpleData.user = userData
+      }
+      
+      console.log('Final session data:', simpleData)
+      return simpleData
     } catch (error) {
-      console.error('Erreur création session:', error)
+      console.error('=== SESSION CREATION FAILED ===')
+      console.error('Error type:', typeof error)
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Full error:', error)
       throw error
     }
   },

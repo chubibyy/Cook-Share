@@ -5,8 +5,6 @@ import { useAuthStore } from '../stores/authStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import TabNavigator from './TabNavigator';
 
-// ⚠️ assure-toi que ce fichier exporte bien par défaut
-// export default function CreateSessionScreen() {...}
 import { CreateSessionScreen } from '../screens/create/CreateSessionScreen';
 
 const Stack = createNativeStackNavigator();

@@ -26,12 +26,57 @@ export const supabaseHelpers = {
   // Upload d'image générique avec types (VERSION INTÉGRÉE)
   async uploadImage(file, type = 'session', userId = null, additionalPath = '') {
     try {
-      const fileExt = file.name?.split('.').pop() || 'jpg'
+      console.log('=== UPLOAD IMAGE DEBUG ===')
+      console.log('Original file object:', file)
+      console.log('File type:', typeof file)
+      console.log('File properties:', Object.keys(file))
+
+      // Handle Expo ImagePicker format
+      let fileToUpload
+      let fileExt = 'jpg'
+      let fileName = file.fileName || file.name
+
+      if (file.uri) {
+        // Expo ImagePicker format
+        console.log('Processing Expo ImagePicker file...')
+        console.log('File URI:', file.uri)
+        console.log('File mimeType:', file.mimeType)
+        console.log('File fileSize:', file.fileSize)
+        
+        // Get file extension from mimeType or fileName
+        if (file.mimeType) {
+          fileExt = file.mimeType.split('/')[1]?.toLowerCase() || 'jpg'
+        } else if (fileName) {
+          fileExt = fileName.split('.').pop()?.toLowerCase() || 'jpg'
+        } else if (file.uri.includes('.')) {
+          fileExt = file.uri.split('.').pop()?.toLowerCase() || 'jpg'
+        }
+        
+        // Convert URI to ArrayBuffer for Supabase (most reliable method)
+        console.log('Converting URI to ArrayBuffer...')
+        const response = await fetch(file.uri)
+        const arrayBuffer = await response.arrayBuffer()
+        
+        console.log('ArrayBuffer size:', arrayBuffer.byteLength, 'bytes')
+        
+        if (arrayBuffer.byteLength === 0) {
+          throw new Error('Image file is empty or corrupted')
+        }
+        
+        fileToUpload = arrayBuffer
+        
+      } else {
+        // Direct file object
+        fileToUpload = file
+        if (file.name) {
+          fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+        }
+      }
+
       const timestamp = Date.now()
       const randomId = Math.random().toString(36).substring(2)
 
       let filePath
-
       switch (type) {
         case 'avatar':
           filePath = `avatars/${userId || 'anonymous'}-${timestamp}.${fileExt}`
@@ -49,24 +94,39 @@ export const supabaseHelpers = {
           filePath = `challenges/${additionalPath || 'challenge'}-${timestamp}.${fileExt}`
           break
         default:
-          const fileName = `${timestamp}-${randomId}.${fileExt}`
-          filePath = additionalPath ? `${additionalPath}/${fileName}` : fileName
+          const generatedFileName = `${timestamp}-${randomId}.${fileExt}`
+          filePath = additionalPath ? `${additionalPath}/${generatedFileName}` : generatedFileName
       }
+
+      console.log('Upload path:', filePath)
+      console.log('File to upload:', fileToUpload)
+
+      // Determine content type
+      const contentType = file.mimeType || `image/${fileExt}`
+      console.log('Content type:', contentType)
 
       // Upload vers le bucket principal
       const { data, error } = await supabase.storage
         .from('plate-up')
-        .upload(filePath, file, {
+        .upload(filePath, fileToUpload, {
           cacheControl: '3600',
           upsert: type === 'avatar',
-          contentType: file.type || 'image/jpeg',
+          contentType: contentType,
         })
-      if (error) throw error
+      
+      if (error) {
+        console.error('Supabase storage error:', error)
+        throw error
+      }
+
+      console.log('Upload successful:', data)
 
       // Obtenir l'URL publique
       const {
         data: { publicUrl },
       } = supabase.storage.from('plate-up').getPublicUrl(data.path)
+
+      console.log('Generated public URL:', publicUrl)
 
       return {
         url: publicUrl,

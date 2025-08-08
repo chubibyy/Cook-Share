@@ -9,7 +9,8 @@ import {
   Image,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  TextInput
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
@@ -29,7 +30,7 @@ const CreateSessionScreen = ({ navigation }) => {
     photo: null,
     duration: '',
     ingredients: [],
-    cuisine_type: '',
+    cuisine_types: [], // Changed to array for multi-select
     difficulty: 1,
     tags: [],
     club_id: null
@@ -121,10 +122,11 @@ const CreateSessionScreen = ({ navigation }) => {
 
   // Ajout d'ingrédient
   const addIngredient = () => {
-    if (currentIngredient.trim() && formData.ingredients.length < 20) {
+    const ingredient = currentIngredient.trim()
+    if (ingredient && !formData.ingredients.includes(ingredient) && formData.ingredients.length < 20) {
       setFormData(prev => ({
         ...prev,
-        ingredients: [...prev.ingredients, currentIngredient.trim()]
+        ingredients: [...prev.ingredients, ingredient]
       }))
       setCurrentIngredient('')
     }
@@ -140,14 +142,12 @@ const CreateSessionScreen = ({ navigation }) => {
 
   // Ajout de tag
   const addTag = () => {
-    if (currentTag.trim() && formData.tags.length < 10) {
-      const tag = currentTag.trim().toLowerCase()
-      if (!formData.tags.includes(tag)) {
-        setFormData(prev => ({
-          ...prev,
-          tags: [...prev.tags, tag]
-        }))
-      }
+    const tag = currentTag.trim().toLowerCase()
+    if (tag && !formData.tags.includes(tag) && formData.tags.length < 10) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag]
+      }))
       setCurrentTag('')
     }
   }
@@ -189,27 +189,43 @@ const CreateSessionScreen = ({ navigation }) => {
     if (!validateForm()) return
 
     try {
-      // Upload de l'image
+      console.log('=== STARTING SESSION CREATION ===')
+      console.log('User:', user)
+      console.log('Form data:', formData)
+
+      // Upload image if present
       let photoUrl = null
       if (formData.photo) {
-        const { url } = await supabaseHelpers.uploadSessionImage(
-          formData.photo,
-          user.id
-        )
-        photoUrl = url
+        console.log('Uploading image...')
+        try {
+          const { url } = await supabaseHelpers.uploadSessionImage(
+            formData.photo,
+            user.id
+          )
+          photoUrl = url
+          console.log('Image uploaded successfully:', photoUrl)
+        } catch (imageError) {
+          console.error('Image upload failed:', imageError)
+          Alert.alert(
+            'Image Upload Failed', 
+            'Your session will be created without the photo. You can add it later.'
+          )
+        }
       }
 
-      // Création de la session
+      // Création de la session with minimal data
       const sessionData = {
         title: formData.title.trim(),
-        photo_url: photoUrl,
+        photo_url: photoUrl, // This will be null for now
         duration: Number(formData.duration),
         ingredients: formData.ingredients,
-        cuisine_type: formData.cuisine_type || null,
+        cuisine_type: formData.cuisine_types.length > 0 ? formData.cuisine_types[0] : null,
         difficulty: formData.difficulty,
         tags: formData.tags,
-        club_id: formData.club_id
+        club_id: null
       }
+
+      console.log('Session data being sent:', sessionData)
 
       const result = await createSession(sessionData)
 
@@ -221,14 +237,15 @@ const CreateSessionScreen = ({ navigation }) => {
             {
               text: 'OK',
               onPress: () => {
-                navigation.navigate('Home')
+                // Navigate back to the tabs (which will show the Home screen)
+                navigation.goBack()
                 // Reset du formulaire
                 setFormData({
                   title: '',
                   photo: null,
                   duration: '',
                   ingredients: [],
-                  cuisine_type: '',
+                  cuisine_types: [],
                   difficulty: 1,
                   tags: [],
                   club_id: null
@@ -347,22 +364,24 @@ const CreateSessionScreen = ({ navigation }) => {
             >
               {CUISINE_TYPES.map((cuisine, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={cuisine.id}
                   style={[
                     styles.cuisineChip,
-                    formData.cuisine_type === cuisine.name && styles.cuisineChipActive
+                    formData.cuisine_types.includes(cuisine.id) && styles.cuisineChipActive
                   ]}
                   onPress={() => setFormData(prev => ({
                     ...prev,
-                    cuisine_type: prev.cuisine_type === cuisine.name ? '' : cuisine.name
+                    cuisine_types: prev.cuisine_types.includes(cuisine.id)
+                      ? prev.cuisine_types.filter(id => id !== cuisine.id)
+                      : [...prev.cuisine_types, cuisine.id]
                   }))}
                 >
                   <Text style={styles.cuisineEmoji}>{cuisine.emoji}</Text>
                   <Text style={[
                     styles.cuisineText,
-                    formData.cuisine_type === cuisine.name && styles.cuisineTextActive
+                    formData.cuisine_types.includes(cuisine.id) && styles.cuisineTextActive
                   ]}>
-                    {cuisine.name}
+                    {cuisine.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -373,19 +392,24 @@ const CreateSessionScreen = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.inputLabel}>🥘 Ingrédients principaux</Text>
             <View style={styles.addInputContainer}>
-              <Input
-                placeholder="Ajouter un ingrédient..."
-                value={currentIngredient}
-                onChangeText={setCurrentIngredient}
-                onSubmitEditing={addIngredient}
-                style={styles.addInput}
-              />
-              <Button
-                title="+"
+              <View style={styles.textInputWrapper}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Ajouter un ingrédient..."
+                  placeholderTextColor={COLORS.textSecondary}
+                  value={currentIngredient}
+                  onChangeText={setCurrentIngredient}
+                  onSubmitEditing={addIngredient}
+                  returnKeyType="done"
+                  blurOnSubmit={false}
+                />
+              </View>
+              <TouchableOpacity 
+                style={styles.addButton} 
                 onPress={addIngredient}
-                size="small"
-                style={styles.addButton}
-              />
+              >
+                <Text style={styles.addButtonText}>+</Text>
+              </TouchableOpacity>
             </View>
             
             {formData.ingredients.length > 0 && (
@@ -409,19 +433,24 @@ const CreateSessionScreen = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.inputLabel}>#️⃣ Tags</Text>
             <View style={styles.addInputContainer}>
-              <Input
-                placeholder="Ajouter un tag..."
-                value={currentTag}
-                onChangeText={setCurrentTag}
-                onSubmitEditing={addTag}
-                style={styles.addInput}
-              />
-              <Button
-                title="+"
+              <View style={styles.textInputWrapper}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Ajouter un tag..."
+                  placeholderTextColor={COLORS.textSecondary}
+                  value={currentTag}
+                  onChangeText={setCurrentTag}
+                  onSubmitEditing={addTag}
+                  returnKeyType="done"
+                  blurOnSubmit={false}
+                />
+              </View>
+              <TouchableOpacity 
+                style={styles.addButton} 
                 onPress={addTag}
-                size="small"
-                style={styles.addButton}
-              />
+              >
+                <Text style={styles.addButtonText}>+</Text>
+              </TouchableOpacity>
             </View>
             
             {formData.tags.length > 0 && (
@@ -455,4 +484,240 @@ const CreateSessionScreen = ({ navigation }) => {
     </SafeAreaView>
   )
 }
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    backgroundColor: COLORS.surface,
+  },
+  backButton: {
+    padding: SPACING.sm,
+  },
+  backButtonText: {
+    fontSize: 24,
+    color: COLORS.primary,
+  },
+  title: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.text,
+  },
+  placeholder: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  section: {
+    marginVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  photoContainer: {
+    height: 200,
+    borderRadius: RADIUS.md,
+    borderWidth: 2,
+    borderColor: COLORS.borderLight,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+  },
+  photoError: {
+    borderColor: COLORS.error,
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+  },
+  photoPlaceholderEmoji: {
+    fontSize: 48,
+    marginBottom: SPACING.sm,
+  },
+  photoPlaceholderText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.md,
+  },
+  row: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.md,
+  },
+  halfWidth: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    fontWeight: TYPOGRAPHY.weights.medium,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  difficultyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.xs,
+  },
+  difficultyButton: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+  },
+  difficultyButtonActive: {
+    backgroundColor: COLORS.primary,
+  },
+  difficultyText: {
+    fontSize: 16,
+  },
+  difficultyTextActive: {
+    transform: [{ scale: 1.2 }],
+  },
+  cuisineScroll: {
+    marginVertical: SPACING.sm,
+  },
+  cuisineChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginRight: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  cuisineChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  cuisineEmoji: {
+    fontSize: 16,
+    marginRight: SPACING.xs,
+  },
+  cuisineText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.text,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+  cuisineTextActive: {
+    color: COLORS.white,
+  },
+  addInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  textInputWrapper: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.base,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    paddingHorizontal: SPACING.md,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  textInput: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.text,
+    paddingVertical: SPACING.sm,
+  },
+  addInput: {
+    flex: 1,
+  },
+  addButton: {
+    backgroundColor: COLORS.primary,
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: COLORS.white,
+    fontSize: 20,
+    fontWeight: TYPOGRAPHY.weights.bold,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  ingredientChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.success + '20',
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.success + '40',
+  },
+  ingredientText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.success,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.info + '20',
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.info + '40',
+  },
+  tagText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.info,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+  removeText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.error,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    marginLeft: SPACING.xs,
+  },
+  footer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    backgroundColor: COLORS.surface,
+  },
+  errorText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.error,
+    marginTop: SPACING.xs,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+})
+
 export {CreateSessionScreen}
