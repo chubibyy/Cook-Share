@@ -1,12 +1,13 @@
-// src/navigation/TabNavigator.js - Version simplifiée pour démarrer
+// src/navigation/TabNavigator.js
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ChallengesScreen } from '../screens/challenges/ChallengesScreen';
-import { CreateSessionScreen } from '../screens/create/CreateSessionScreen';
 import { ClubsScreen } from '../screens/clubs/ClubsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { COLORS, SPACING, SHADOWS } from '../utils/constants';
@@ -28,16 +29,22 @@ const TabIcon = ({ icon, focused, badge = 0 }) => (
   </View>
 );
 
-const CreateButton = ({ onPress }) => (
-  <TouchableOpacity style={styles.createButton} onPress={onPress}>
-    <LinearGradient
-      colors={[COLORS.primary, COLORS.secondary]}
-      style={styles.createButtonGradient}
+const CreateButton = () => {
+  const navigation = useNavigation();
+  return (
+    <TouchableOpacity
+      style={styles.createButton}
+      onPress={() => navigation.navigate('CreateSession')}
     >
-      <Text style={styles.createButtonText}>+</Text>
-    </LinearGradient>
-  </TouchableOpacity>
-);
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.secondary]}
+        style={styles.createButtonGradient}
+      >
+        <Text style={styles.createButtonText}>+</Text>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+};
 
 const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -63,6 +70,8 @@ const ProfileStack = () => (
   </Stack.Navigator>
 );
 
+const Dummy = () => null; // placeholder pour l’onglet central
+
 const TabNavigator = () => {
   const { unreadCount } = useNotificationStore();
 
@@ -81,9 +90,7 @@ const TabNavigator = () => {
         name="Home"
         component={HomeStack}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🏠" focused={focused} />
-          )
+          tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
         }}
       />
 
@@ -91,19 +98,16 @@ const TabNavigator = () => {
         name="Challenges"
         component={ChallengesStack}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🎯" focused={focused} />
-          )
+          tabBarIcon: ({ focused }) => <TabIcon icon="🎯" focused={focused} />,
         }}
       />
 
+      {/* Onglet central -> ouvre la modale CreateSession */}
       <Tab.Screen
         name="Create"
-        component={CreateSessionScreen}
+        component={Dummy}
         options={{
-          tabBarButton: (props) => (
-            <CreateButton onPress={props.onPress} />
-          )
+          tabBarButton: () => <CreateButton />,
         }}
       />
 
@@ -111,9 +115,7 @@ const TabNavigator = () => {
         name="Clubs"
         component={ClubsStack}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="👥" focused={focused} />
-          )
+          tabBarIcon: ({ focused }) => <TabIcon icon="👥" focused={focused} />,
         }}
       />
 
@@ -123,7 +125,7 @@ const TabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="👤" focused={focused} badge={unreadCount} />
-          )
+          ),
         }}
       />
     </Tab.Navigator>
@@ -183,4 +185,3 @@ const styles = StyleSheet.create({
 });
 
 export default TabNavigator;
-

@@ -11,11 +11,7 @@ const Stack = createStackNavigator();
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        gestureEnabled: true,
-        gestureDirection: 'horizontal',
-      }}
+      screenOptions={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }}
       initialRouteName="Welcome"
     >
       <Stack.Screen name="Welcome" component={WelcomeScreen} />

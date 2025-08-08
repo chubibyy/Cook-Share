@@ -455,3 +455,4 @@ const CreateSessionScreen = ({ navigation }) => {
     </SafeAreaView>
   )
 }
+export {CreateSessionScreen}
