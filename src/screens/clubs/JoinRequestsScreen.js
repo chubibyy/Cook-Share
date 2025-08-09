@@ -79,41 +79,47 @@ export const JoinRequestsScreen = ({ navigation }) => {
     )
   }
 
-  const renderRequestItem = ({ item }) => (
-    <View style={styles.requestItem}>
-      <View style={styles.userInfo}>
-        <Avatar
-          source={{ uri: item.user.avatar_url }}
-          size="medium"
-          name={item.user.username}
-          xp={item.user.xp}
-          showBadge={true}
-        />
-        <View style={styles.userDetails}>
-          <Text style={styles.username}>{item.user.username}</Text>
-          <Text style={styles.requestDate}>
-            Demande envoyée le {new Date(item.requested_at).toLocaleDateString('fr-FR')}
-          </Text>
+  const renderRequestItem = ({ item }) => {
+    const avatarUrl = item.user?.avatar_url
+    const username = item.user?.username || 'Utilisateur inconnu'
+    const xp = item.user?.xp || 0
+
+    return (
+      <View style={styles.requestItem}>
+        <View style={styles.userInfo}>
+          <Avatar
+            source={avatarUrl ? { uri: avatarUrl } : undefined}
+            size="medium"
+            name={username}
+            xp={xp}
+            showBadge={true}
+          />
+          <View style={styles.userDetails}>
+            <Text style={styles.username}>{username}</Text>
+            <Text style={styles.requestDate}>
+              Demande envoyée le {new Date(item.requested_at).toLocaleDateString('fr-FR')}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.actions}>
+          <Button
+            title="Refuser"
+            onPress={() => handleReject(item.id, username)}
+            variant="outline"
+            size="small"
+            style={styles.rejectButton}
+          />
+          <Button
+            title="Accepter"
+            onPress={() => handleApprove(item.id, username)}
+            size="small"
+            style={styles.approveButton}
+          />
         </View>
       </View>
-      
-      <View style={styles.actions}>
-        <Button
-          title="Refuser"
-          onPress={() => handleReject(item.id, item.user.username)}
-          variant="outline"
-          size="small"
-          style={styles.rejectButton}
-        />
-        <Button
-          title="Accepter"
-          onPress={() => handleApprove(item.id, item.user.username)}
-          size="small"
-          style={styles.approveButton}
-        />
-      </View>
-    </View>
-  )
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
