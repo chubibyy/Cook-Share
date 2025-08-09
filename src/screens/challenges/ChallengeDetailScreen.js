@@ -208,7 +208,14 @@ const ChallengeDetailScreen = ({ navigation }) => {
           <Section title="🏆 Récompenses">
             <View style={styles.rewardsContainer}>
               <RewardItem label="Points d'Expérience" value={`+${reward_xp} XP`} icon="✨" />
-              <RewardItem label="Badge à gagner" value="Badge exclusif" icon="🏅" />
+              {currentChallenge.badge_image_url ? (
+                <View style={styles.rewardItem}>
+                  <Text style={styles.rewardLabel}>Badge à gagner</Text>
+                  <Image source={{ uri: currentChallenge.badge_image_url }} style={styles.badgeImage} />
+                </View>
+              ) : (
+                <RewardItem label="Badge à gagner" value="Aucun" icon="🏅" />
+              )}
             </View>
           </Section>
           <Section title="👥 Participants" subtitle={`${participantsCount || 0} participant(s)`}>
@@ -294,10 +301,16 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: TYPOGRAPHY.sizes.sm, color: COLORS.textSecondary, marginTop: 2 },
   constraintText: { fontSize: TYPOGRAPHY.sizes.base, color: COLORS.text, fontStyle: 'italic' },
   rewardsContainer: { backgroundColor: COLORS.surface, borderRadius: RADIUS.md, padding: SPACING.md, ...SHADOWS.sm },
-  rewardItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm },
+  rewardItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, justifyContent: 'space-between' },
   rewardIcon: { fontSize: 24, marginRight: SPACING.md },
   rewardLabel: { fontSize: TYPOGRAPHY.sizes.base, color: COLORS.textSecondary },
   rewardValue: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.semibold, color: COLORS.text },
+  badgeImage: {
+    width: 40,
+    height: 40,
+    marginRight: SPACING.md,
+    resizeMode: 'contain',
+  },
   participantsList: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   participantAvatar: { marginRight: -SPACING.sm, borderWidth: 2, borderColor: COLORS.background },
   moreParticipants: { marginLeft: SPACING.lg, color: COLORS.textSecondary },

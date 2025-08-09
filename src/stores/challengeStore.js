@@ -286,6 +286,15 @@ export const useChallengeStore = create((set, get) => ({
         useAuthStore.getState().addXP(challengeForXp.reward_xp)
       }
 
+      // Ajouter le badge à la collection de l'utilisateur
+      if (challengeForXp?.badge_image_url) {
+        await supabase.from('user_badges').insert({
+          user_id: userId,
+          challenge_id: challengeId,
+          badge_image_url: challengeForXp.badge_image_url
+        }, { onConflict: 'user_id,challenge_id' });
+      }
+
       return { success: true }
     } catch (error) {
       set({

@@ -1,139 +1,133 @@
-// src/screens/profile/ProfileScreen.js
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  Image,
   TouchableOpacity,
   Alert,
   RefreshControl,
   FlatList,
-  ActivityIndicator,
-  Share
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
-import { useSessionStore } from '../../stores/sessionStore';
-import { Header } from '../../components/layout/Header';
+import { usersService } from '../../services/users';
+import { supabase } from '../../services/supabase';
 import { SessionCard } from '../../components/cards/SessionCard';
 import { Avatar, Button } from '../../components/common';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants';
 
 export const ProfileScreen = ({ navigation }) => {
-  const { user, signOut } = useAuthStore();
-  const { sessions, loading, loadFeed, refresh, toggleLike, toggleSave } = useSessionStore();
+  const { user, signOut, loading: authLoading, isInitialized: authInitialized } = useAuthStore();
+  const [sessions, setSessions] = useState([]);
+  const [badges, setBadges] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filter sessions to show only current user's sessions
-  const userSessions = sessions.filter(session => session.user_id === user?.id);
-
-  useEffect(() => {
-    // Load user's sessions on component mount
-    if (user?.id) {
-      loadFeed(0, 50, user.id);
+  const fetchData = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
     }
-  }, [user?.id, loadFeed]);
-
-  // Refresh automatique à chaque fois que l'écran reçoit le focus
-  useFocusEffect(
-    useCallback(() => {
-      console.log('👤 [FOCUS] ProfileScreen reçoit le focus - refresh automatique')
-      if (user?.id) {
-        refresh()
-      }
-    }, [user?.id, refresh])
-  );
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
     try {
-      await refresh();
+      const { data: sessionsData } = await supabase.from('cooking_sessions').select('*').eq('user_id', user.id);
+      setSessions(sessionsData || []);
+      const userBadges = await usersService.getUserBadges(user.id);
+      setBadges(userBadges);
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      console.error('Failed to fetch profile data:', error);
+      Alert.alert('Erreur', 'Impossible de charger les données du profil.');
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (authInitialized && user?.id) {
+        setLoading(true);
+        fetchData();
+      } else if (authInitialized && !user?.id) {
+        setLoading(false);
+      }
+    }, [authInitialized, user?.id, fetchData])
+  );
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
   };
 
-  const handleEditProfile = () => {
-    navigation.navigate('EditProfileScreen');
-  };
-
+  const handleEditProfile = () => navigation.navigate('EditProfileScreen');
   const handleSignOut = () => {
-    Alert.alert(
-      'Se d�connecter',
-      '�tes-vous s�r de vouloir vous d�connecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Se d�connecter', 
-          style: 'destructive',
-          onPress: signOut 
-        }
-      ]
+    Alert.alert('Se déconnecter', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Se déconnecter', style: 'destructive', onPress: signOut },
+    ]);
+  };
+
+  const renderSessionItem = ({ item }) => <SessionCard session={item} />;
+
+  const BadgesSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>Ma collection de Badges ({badges.length})</Text>
+      {badges.length === 0 ? (
+        <Text style={styles.emptySubtext}>Aucun badge gagné. Participez à des challenges !</Text>
+      ) : (
+        <FlatList
+          data={badges}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => Alert.alert(item.challenge?.title || 'Badge', `Gagné le ${new Date(item.earned_at).toLocaleDateString()}`)}>
+              <Image source={{ uri: item.badge_image_url }} style={styles.badgeImage} />
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={{ paddingVertical: SPACING.sm }}
+        />
+      )}
+    </View>
+  );
+
+  const ListHeader = ({ user }) => {
+    // The parent component (ProfileScreen) ensures 'user' is defined before rendering ListHeader
+    // If for some reason user is still undefined here, return null to prevent errors
+    if (!user) {
+      return null;
+    }
+    return (
+      <View style={styles.profileHeader}>
+        <View style={styles.profileInfo}>
+          <Avatar source={{ uri: user.avatar_url }} size="large" name={user.username} />
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{user.username}</Text>
+            <Text style={styles.bio} numberOfLines={2}>{user.bio || 'Aucune bio'}</Text>
+            <Text style={styles.xp}>✨ {user.xp || 0} XP</Text>
+          </View>
+        </View>
+        <View style={styles.actionButtons}>
+          <Button title="Modifier le profil" onPress={handleEditProfile} style={styles.editButton} />
+          <Button title="Se déconnecter" onPress={handleSignOut} style={styles.signOutButton} variant="outline" />
+        </View>
+        <BadgesSection />
+        <Text style={[styles.sectionTitle, { marginTop: SPACING.lg }]}>Mes Sessions ({sessions.length})</Text>
+      </View>
     );
   };
 
-  const handleSessionPress = (session) => {
-    navigation.navigate('SessionDetailScreen', { sessionId: session.id });
-  };
+  if (loading || authLoading || !authInitialized) {
+    return <SafeAreaView style={styles.container}><ActivityIndicator style={{flex: 1}} size="large" color={COLORS.primary} /></SafeAreaView>;
+  }
 
-  const handleUserPress = (session) => {
-    navigation.navigate('SessionDetailScreen', { sessionId: session.id });
-  };
-
-  const handleLike = async (sessionId) => {
-    await toggleLike(sessionId);
-  };
-
-  const handleSave = async (sessionId) => {
-    await toggleSave(sessionId);
-  };
-
-  const handleComment = (session) => {
-    navigation.navigate('SessionDetailScreen', { 
-      sessionId: session.id, 
-      focusComment: true 
-    });
-  };
-
-  const handleShare = async (sessionId) => {
-    if (!sessionId) return
-    
-    // Trouver la session dans userSessions
-    const session = userSessions.find(s => s.id === sessionId)
-    if (!session) return
-    
-    try {
-      await Share.share({
-        message: `Découvrez cette session de cuisine sur CookShare: ${session.title}\n#CookShareApp`,
-      })
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de partager la session.')
-    }
-  };
-
-  const renderSessionItem = ({ item }) => (
-    <SessionCard
-      session={item}
-      onPress={() => handleSessionPress(item)}
-      onUserPress={handleUserPress}
-      onLike={handleLike}
-      onSave={handleSave}
-      onComment={handleComment}
-      onShare={handleShare}
-    />
-  );
-
-  if (loading && userSessions.length === 0) {
+  if (!user) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header title="Profil" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Chargement...</Text>
+        <View style={styles.emptyProfileContainer}>
+          <Text style={styles.emptyProfileText}>Veuillez vous connecter pour voir votre profil.</Text>
         </View>
       </SafeAreaView>
     );
@@ -141,61 +135,13 @@ export const ProfileScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Profil" />
       <FlatList
-        data={userSessions}
+        data={sessions}
         renderItem={renderSessionItem}
         keyExtractor={(item) => item.id}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-        ListHeaderComponent={
-          <View style={styles.profileHeader}>
-            <View style={styles.profileInfo}>
-              <Avatar
-                source={{ uri: user?.avatar_url }}
-                size="large"
-                name={user?.username}
-              />
-              <View style={styles.userInfo}>
-                <Text style={styles.username}>{user?.username}</Text>
-                <Text style={styles.bio}>{user?.bio || 'Aucune bio'}</Text>
-                <Text style={styles.cookingLevel}>
-                  Niveau: {user?.cooking_level || 'Non d�fini'}
-                </Text>
-                <Text style={styles.xp}>XP: {user?.xp || 0}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.actionButtons}>
-              <Button
-                title="Modifier le profil"
-                onPress={handleEditProfile}
-                style={styles.editButton}
-              />
-              <Button
-                title="Se d�connecter"
-                onPress={handleSignOut}
-                style={styles.signOutButton}
-                variant="outline"
-              />
-            </View>
-            
-            <View style={styles.statsContainer}>
-              <Text style={styles.sectionTitle}>Mes Sessions ({userSessions.length})</Text>
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          !loading && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Aucune session trouv�e</Text>
-              <Text style={styles.emptySubtext}>
-                Cr�ez votre premi�re session de cuisine !
-              </Text>
-            </View>
-          )
-        }
+        ListHeaderComponent={<ListHeader user={user} />}
+        ListEmptyComponent={() => <Text style={styles.emptySubtext}>Partagez votre première création culinaire !</Text>}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       />
@@ -204,28 +150,9 @@ export const ProfileScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  contentContainer: {
-    flexGrow: 1,
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.xl,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
-  },
-  profileHeader: {
-    marginBottom: SPACING.lg,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  contentContainer: { flexGrow: 1, paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl },
+  profileHeader: { marginBottom: SPACING.md },
   profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -235,68 +162,37 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     ...SHADOWS.sm,
   },
-  userInfo: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  username: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: TYPOGRAPHY.weights.bold,
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  bio: {
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  cookingLevel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.primary,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    marginBottom: SPACING.xs,
-  },
-  xp: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textMuted,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  editButton: {
-    flex: 1,
-  },
-  signOutButton: {
-    flex: 1,
-  },
-  statsContainer: {
+  userInfo: { flex: 1, marginLeft: SPACING.md },
+  username: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold, color: COLORS.text, marginBottom: SPACING.xs },
+  bio: { fontSize: TYPOGRAPHY.sizes.base, color: COLORS.textSecondary, marginBottom: SPACING.sm },
+  xp: { fontSize: TYPOGRAPHY.sizes.md, color: COLORS.accent, fontWeight: 'bold' },
+  actionButtons: { flexDirection: 'row', gap: SPACING.md, marginBottom: SPACING.md },
+  editButton: { flex: 1 },
+  signOutButton: { flex: 1 },
+  sectionContainer: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     ...SHADOWS.sm,
+    marginBottom: SPACING.md,
   },
-  sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    color: COLORS.text,
-  },
-  emptyContainer: {
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.semibold, color: COLORS.text, marginBottom: SPACING.sm },
+  emptySubtext: { color: COLORS.textMuted, textAlign: 'center', marginTop: SPACING.md },
+  badgeImage: { width: 60, height: 60, borderRadius: 30, marginRight: SPACING.md, backgroundColor: COLORS.borderLight },
+  emptyProfileContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: SPACING.xxxl,
+    padding: SPACING.lg,
   },
-  emptyText: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.semibold,
+  emptyProfileText: {
+    fontSize: TYPOGRAPHY.sizes.md,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  emptySubtext: {
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  loadingProfileText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.md,
   },
 });
