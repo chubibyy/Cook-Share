@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, RefreshControl, Modal } from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, RefreshControl, Modal, Share } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useFocusEffect } from '@react-navigation/native'
 import { useClubStore } from '../../stores/clubStore'
@@ -25,8 +25,8 @@ export const ClubDetailScreen = ({ navigation }) => {
     sendChatMessage,
     subscribeToChat,
     unsubscribeFromChat,
-    pauseChatPolling,
-    resumeChatPolling,
+    stopChatPolling,
+    startChatPolling,
     deleteClub,
     checkJoinRequestStatus,
     loadJoinRequests,
@@ -45,9 +45,26 @@ export const ClubDetailScreen = ({ navigation }) => {
   const isMember = currentClub?.userMembership !== null && currentClub?.userMembership !== undefined
 
   useEffect(() => {
+    console.log('🏠 [SCREEN] Montage du ClubDetailScreen pour clubId:', clubId)
     loadClubById(clubId)
     loadClubFeed(clubId, true)
   }, [clubId, loadClubById, loadClubFeed])
+
+  // Recharger automatiquement quand on change d'onglet vers Feed
+  useEffect(() => {
+    if (tab === 'feed') {
+      console.log('📋 [SCREEN] Onglet FEED actif - rechargement du feed')
+      loadClubFeed(clubId, true)
+    }
+  }, [tab, clubId, loadClubFeed])
+
+  // Charger le feed dès que currentClub est disponible
+  useEffect(() => {
+    if (currentClub && tab === 'feed') {
+      console.log('🏗️ [SCREEN] Club chargé et tab Feed - chargement initial du feed')
+      loadClubFeed(clubId, true)
+    }
+  }, [currentClub, tab, clubId, loadClubFeed])
 
   useEffect(() => {
     // Vérifier le statut de demande d'adhésion si l'utilisateur n'est pas membre d'un club privé
@@ -70,10 +87,14 @@ export const ClubDetailScreen = ({ navigation }) => {
   // Recharger les données quand l'écran reçoit le focus (retour depuis SessionDetail)
   useFocusEffect(
     useCallback(() => {
+      console.log('👀 [FOCUS] Écran reçoit le focus, tab actuel:', tab)
+      // Toujours recharger le club et le feed au focus
+      loadClubById(clubId)
       if (tab === 'feed') {
+        console.log('👀 [FOCUS] Rechargement du feed car onglet Feed actif')
         loadClubFeed(clubId, true)
       }
-    }, [tab, clubId, loadClubFeed])
+    }, [tab, clubId, loadClubById, loadClubFeed])
   )
 
   // Gérer la subscription du chat pour les membres
@@ -100,14 +121,14 @@ export const ClubDetailScreen = ({ navigation }) => {
   // Charger les messages et gérer le polling quand on change d'onglet
   useEffect(() => {
     if (tab === 'chat' && isMember) {
-      console.log('📱 [SCREEN] Onglet CHAT actif - chargement messages et reprise polling')
+      console.log('📱 [SCREEN] Onglet CHAT actif - chargement messages et démarrage polling')
       loadChatMessages(clubId)
-      resumeChatPolling() // Reprendre le polling quand on va sur Chat
+      startChatPolling(clubId) // Démarrer le polling quand on va sur Chat
     } else {
-      console.log('📱 [SCREEN] Onglet FEED ou pas membre - pause du polling')
-      pauseChatPolling() // Pause le polling quand on n'est pas sur Chat
+      console.log('📱 [SCREEN] Onglet FEED ou pas membre - arrêt complet du polling')
+      stopChatPolling() // Arrêter complètement le polling
     }
-  }, [tab, clubId, isMember, loadChatMessages, resumeChatPolling, pauseChatPolling])
+  }, [tab, clubId, isMember, loadChatMessages, startChatPolling, stopChatPolling])
 
   // Cleanup général seulement quand on quitte complètement le composant
   useEffect(() => {
@@ -221,6 +242,22 @@ export const ClubDetailScreen = ({ navigation }) => {
     })
   }
 
+  const handleShare = async (sessionId) => {
+    if (!sessionId) return
+    
+    // Trouver la session dans le feed
+    const session = clubFeed.find(s => s.id === sessionId)
+    if (!session) return
+    
+    try {
+      await Share.share({
+        message: `Découvrez cette session de cuisine sur CookShare: ${session.title}\n#CookShareApp`,
+      })
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de partager la session.')
+    }
+  }
+
   const renderFeedItem = ({ item }) => (
     <SessionCard
       session={item}
@@ -229,6 +266,7 @@ export const ClubDetailScreen = ({ navigation }) => {
       onLike={handleLike}
       onSave={handleSave}
       onComment={handleComment}
+      onShare={handleShare}
     />
   )
 

@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  RefreshControl
+  RefreshControl,
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
@@ -64,6 +65,39 @@ export const UserProfileScreen = ({ route, navigation }) => {
     navigation.navigate('SessionDetail', { sessionId: session.id });
   };
 
+  const handleLike = async (sessionId) => {
+    const { toggleLike } = useSessionStore.getState();
+    await toggleLike(sessionId);
+  };
+
+  const handleSave = async (sessionId) => {
+    const { toggleSave } = useSessionStore.getState();
+    await toggleSave(sessionId);
+  };
+
+  const handleComment = (session) => {
+    navigation.navigate('SessionDetail', { 
+      sessionId: session.id, 
+      focusComment: true 
+    });
+  };
+
+  const handleShare = async (sessionId) => {
+    if (!sessionId) return
+    
+    // Trouver la session dans userSessions
+    const session = userSessions.find(s => s.id === sessionId)
+    if (!session) return
+    
+    try {
+      await Share.share({
+        message: `Découvrez cette session de cuisine sur CookShare: ${session.title}\n#CookShareApp`,
+      })
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de partager la session.')
+    }
+  };
+
   const handleGoBack = () => {
     navigation.goBack();
   };
@@ -73,6 +107,10 @@ export const UserProfileScreen = ({ route, navigation }) => {
       session={item}
       onPress={() => handleSessionPress(item)}
       onUserPress={handleUserPress}
+      onLike={handleLike}
+      onSave={handleSave}
+      onComment={handleComment}
+      onShare={handleShare}
     />
   );
 

@@ -132,17 +132,32 @@ export const useClubStore = create((set, get) => ({
   loadClubFeed: async (clubId, refresh = false) => {
     try {
       const { clubFeedPage, clubFeed, loading } = get()
-      if (loading) return
+      
+      console.log('📋 [STORE] loadClubFeed appelé:', { clubId, refresh, loading, currentFeedLength: clubFeed.length })
+      
+      // Si refresh demandé, forcer même si loading
+      if (loading && !refresh) {
+        console.log('⏸️ [STORE] Loading en cours et pas de refresh forcé, abandon')
+        return
+      }
+      
       set({ loading: true, error: null })
       const page = refresh ? 0 : clubFeedPage
       const userId = useAuthStore.getState().user?.id
+      
+      console.log('🌐 [STORE] Appel service getClubFeed:', { clubId, page, userId })
       const items = await clubsService.getClubFeed(clubId, page, 10, userId)
+      console.log('✅ [STORE] Service retourné:', items.length, 'items')
+      
       if (refresh) {
+        console.log('🔄 [STORE] REFRESH - remplacement du feed existant')
         set({ clubFeed: items, clubFeedPage: 1, clubFeedHasMore: items.length === 10, loading: false })
       } else {
+        console.log('➕ [STORE] AJOUT - ajout au feed existant')
         set({ clubFeed: [...clubFeed, ...items], clubFeedPage: page + 1, clubFeedHasMore: items.length === 10, loading: false })
       }
     } catch (err) {
+      console.error('❌ [STORE] Erreur loadClubFeed:', err)
       set({ error: err.message, loading: false })
     }
   },
@@ -204,25 +219,10 @@ export const useClubStore = create((set, get) => ({
       }, 500)
     })
     
-    // BACKUP: Polling toutes les 3 secondes au cas où Supabase realtime ne fonctionne pas
-    console.log('⏰ [STORE] Démarrage polling backup (toutes les 3s)')
-    const pollingInterval = setInterval(() => {
-      // Vérifier si le polling est toujours actif (pour éviter les fuites mémoire)
-      const currentState = get()
-      if (currentState.chatPollingInterval && currentState.chatPollingActive) {
-        console.log('🔄 [POLLING] Refresh automatique des messages')
-        get().loadChatMessages(clubId)
-      } else {
-        console.log('⏸️ [POLLING] Polling désactivé, pas de refresh')
-      }
-    }, 3000)
-    
     set({ 
-      chatSubscription: sub, 
-      chatPollingInterval: pollingInterval,
-      chatPollingActive: true  // Activer le polling au démarrage
+      chatSubscription: sub
     })
-    console.log('💾 [STORE] Subscription + Polling sauvés et activés dans le store')
+    console.log('💾 [STORE] Subscription sauvée dans le store')
     return sub
   },
 
@@ -244,14 +244,37 @@ export const useClubStore = create((set, get) => ({
   },
 
   // Fonctions pour contrôler le polling
-  pauseChatPolling: () => {
-    console.log('⏸️ [STORE] Pause du polling chat')
-    set({ chatPollingActive: false })
+  stopChatPolling: () => {
+    const { chatPollingInterval } = get()
+    if (chatPollingInterval) {
+      console.log('⏹️ [STORE] ARRÊT COMPLET du polling')
+      clearInterval(chatPollingInterval)
+      set({ chatPollingInterval: null, chatPollingActive: false })
+    }
   },
 
-  resumeChatPolling: () => {
-    console.log('▶️ [STORE] Reprise du polling chat')
-    set({ chatPollingActive: true })
+  startChatPolling: (clubId) => {
+    const { chatPollingInterval } = get()
+    
+    // Arrêter le polling existant s'il y en a un
+    if (chatPollingInterval) {
+      console.log('🧹 [STORE] Nettoyage polling existant avant nouveau démarrage')
+      clearInterval(chatPollingInterval)
+    }
+
+    console.log('🚀 [STORE] DÉMARRAGE polling pour club:', clubId)
+    const pollingInterval = setInterval(() => {
+      const currentState = get()
+      if (currentState.chatPollingActive) {
+        console.log('🔄 [POLLING] Refresh automatique des messages')
+        get().loadChatMessages(clubId)
+      }
+    }, 3000)
+    
+    set({ 
+      chatPollingInterval: pollingInterval, 
+      chatPollingActive: true 
+    })
   },
 
   // Supprimer un club

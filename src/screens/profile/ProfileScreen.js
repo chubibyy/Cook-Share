@@ -9,7 +9,8 @@ import {
   Alert,
   RefreshControl,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
@@ -87,6 +88,22 @@ export const ProfileScreen = ({ navigation }) => {
     });
   };
 
+  const handleShare = async (sessionId) => {
+    if (!sessionId) return
+    
+    // Trouver la session dans userSessions
+    const session = userSessions.find(s => s.id === sessionId)
+    if (!session) return
+    
+    try {
+      await Share.share({
+        message: `Découvrez cette session de cuisine sur CookShare: ${session.title}\n#CookShareApp`,
+      })
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de partager la session.')
+    }
+  };
+
   const renderSessionItem = ({ item }) => (
     <SessionCard
       session={item}
@@ -95,6 +112,7 @@ export const ProfileScreen = ({ navigation }) => {
       onLike={handleLike}
       onSave={handleSave}
       onComment={handleComment}
+      onShare={handleShare}
     />
   );
 

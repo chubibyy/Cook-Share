@@ -22,6 +22,7 @@ const SessionCard = ({
   onLike,
   onComment,
   onSave,
+  onShare,
   onUserPress,
   style,
   ...props
@@ -212,7 +213,7 @@ const SessionCard = ({
             <Text style={styles.actionText}>{commentsCount}</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.action}>
+          <TouchableOpacity style={styles.action} onPress={() => onShare?.(session.id)}>
             <Text style={styles.actionIcon}>📤</Text>
             <Text style={styles.actionText}>Partager</Text>
           </TouchableOpacity>
