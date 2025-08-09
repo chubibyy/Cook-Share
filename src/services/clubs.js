@@ -343,6 +343,60 @@ export const clubsService = {
       console.error('Erreur quitter club:', error)
       throw error
     }
+  },
+
+  // Supprimer un club (owner seulement)
+  async deleteClub(clubId, userId) {
+    try {
+      // Vérifier que l'utilisateur est bien propriétaire du club
+      const { data: membership, error: membershipError } = await supabase
+        .from('club_members')
+        .select('role')
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+        .single()
+
+      if (membershipError) throw membershipError
+      if (!membership || membership.role !== 'owner') {
+        throw new Error('Vous devez être propriétaire du club pour le supprimer')
+      }
+
+      // Supprimer d'abord tous les membres du club
+      const { error: membersError } = await supabase
+        .from('club_members')
+        .delete()
+        .eq('club_id', clubId)
+
+      if (membersError) throw membersError
+
+      // Supprimer tous les messages du club
+      const { error: messagesError } = await supabase
+        .from('club_messages')
+        .delete()
+        .eq('club_id', clubId)
+
+      if (messagesError) throw messagesError
+
+      // Supprimer toutes les associations club-sessions
+      const { error: sessionsError } = await supabase
+        .from('club_sessions')
+        .delete()
+        .eq('club_id', clubId)
+
+      if (sessionsError) throw sessionsError
+
+      // Maintenant supprimer le club
+      const { error } = await supabase
+        .from('clubs')
+        .delete()
+        .eq('id', clubId)
+
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Erreur suppression club:', error)
+      throw error
+    }
   }
 }
 

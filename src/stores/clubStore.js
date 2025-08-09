@@ -171,6 +171,33 @@ export const useClubStore = create((set, get) => ({
     chatSubscription?.unsubscribe?.()
     set({ chatSubscription: null })
   },
+
+  // Supprimer un club
+  deleteClub: async (clubId) => {
+    try {
+      set({ loading: true, error: null })
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      await clubsService.deleteClub(clubId, userId)
+      
+      // Mettre à jour l'état local
+      const { clubs } = get()
+      const updatedClubs = clubs.filter(club => club.id !== clubId)
+      set({ 
+        clubs: updatedClubs,
+        currentClub: null,
+        clubFeed: [],
+        loading: false 
+      })
+      
+      return true
+    } catch (err) {
+      console.error('Erreur suppression club:', err)
+      set({ error: err.message, loading: false })
+      throw err
+    }
+  },
 }))
 
 

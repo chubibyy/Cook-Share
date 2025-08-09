@@ -25,6 +25,7 @@ export const ClubDetailScreen = ({ navigation }) => {
     sendChatMessage,
     subscribeToChat,
     unsubscribeFromChat,
+    deleteClub,
   } = useClubStore()
 
   const { toggleLike, toggleSave } = useSessionStore()
@@ -66,6 +67,32 @@ export const ClubDetailScreen = ({ navigation }) => {
 
   const handleEditClub = () => {
     navigation.navigate('EditClub', { clubId })
+  }
+
+  const handleDeleteClub = () => {
+    Alert.alert(
+      'Supprimer le club',
+      `Êtes-vous sûr de vouloir supprimer définitivement le club "${currentClub?.name}" ? Cette action est irréversible et supprimera tous les messages du club.`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteClub(clubId)
+              Alert.alert('Club supprimé', 'Le club a été supprimé avec succès')
+              navigation.goBack()
+            } catch (error) {
+              Alert.alert('Erreur', error.message)
+            }
+          }
+        }
+      ]
+    )
   }
 
   const handleRefresh = useCallback(async () => {
@@ -167,6 +194,14 @@ export const ClubDetailScreen = ({ navigation }) => {
               <TouchableOpacity onPress={handleEditClub} style={styles.editButton}>
                 <Text style={styles.editIcon}>✏️</Text>
                 <Text style={styles.editText}>Éditer</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Bouton Supprimer pour owner seulement */}
+            {currentClub?.userMembership?.role === 'owner' && (
+              <TouchableOpacity onPress={handleDeleteClub} style={styles.deleteButton}>
+                <Text style={styles.deleteIcon}>🗑️</Text>
+                <Text style={styles.deleteText}>Supprimer</Text>
               </TouchableOpacity>
             )}
             
@@ -294,6 +329,24 @@ const styles = StyleSheet.create({
     marginRight: SPACING.xs
   },
   editText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.semibold
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.base,
+    ...SHADOWS.small
+  },
+  deleteIcon: {
+    fontSize: 16,
+    marginRight: SPACING.xs
+  },
+  deleteText: {
     color: COLORS.white,
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: TYPOGRAPHY.weights.semibold
