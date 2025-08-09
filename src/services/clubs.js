@@ -1,6 +1,7 @@
 
 // src/services/clubs.js
 import { supabase, supabaseHelpers } from './supabase'
+import { formatTimeAgo } from '../utils/helpers'
 
 export const clubsService = {
   // Récupérer les clubs avec statut utilisateur
@@ -180,21 +181,112 @@ export const clubsService = {
     }
   },
 
-  // Feed des sessions d'un club
-  async getClubFeed(clubId, page = 0, limit = 10) {
+  // Feed des sessions d'un club avec interactions
+  async getClubFeed(clubId, page = 0, limit = 10, userId = null) {
     try {
-      const { data, error } = await supabase
+      // D'abord récupérer les sessions du club
+      const { data: clubSessions, error: clubError } = await supabase
         .from('club_sessions')
         .select(`
-          created_at,
-          session:cooking_sessions(*, user:users(username, avatar_url, xp))
+          session_id,
+          created_at
         `)
         .eq('club_id', clubId)
         .order('created_at', { ascending: false })
         .range(page * limit, (page + 1) * limit - 1)
 
-      if (error) throw error
-      return (data || []).map((row) => ({ ...row.session }))
+      if (clubError) throw clubError
+      if (!clubSessions || clubSessions.length === 0) return []
+
+      const sessionIds = clubSessions.map(cs => cs.session_id)
+
+      // Récupérer les sessions avec les données complètes
+      const { data: sessions, error: sessionError } = await supabase
+        .from('cooking_sessions')
+        .select(`
+          *,
+          user:users(username, avatar_url, cooking_level)
+        `)
+        .in('id', sessionIds)
+
+      if (sessionError) throw sessionError
+      if (!sessions) return []
+
+      // Compter les likes et commentaires
+      const { data: likeCounts } = await supabase
+        .from('likes')
+        .select('session_id')
+        .in('session_id', sessionIds)
+
+      const { data: commentCounts } = await supabase
+        .from('comments')
+        .select('session_id')
+        .in('session_id', sessionIds)
+
+      // Créer les maps de comptage
+      const likeCountMap = {}
+      const commentCountMap = {}
+
+      likeCounts?.forEach(like => {
+        likeCountMap[like.session_id] = (likeCountMap[like.session_id] || 0) + 1
+      })
+
+      commentCounts?.forEach(comment => {
+        commentCountMap[comment.session_id] = (commentCountMap[comment.session_id] || 0) + 1
+      })
+
+      // Si userId fourni, récupérer les interactions utilisateur
+      let userLikes = []
+      let userSaves = []
+
+      if (userId) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('session_id')
+          .eq('user_id', userId)
+          .in('session_id', sessionIds)
+        
+        userLikes = likesData?.map(l => l.session_id) || []
+
+        const { data: savesData } = await supabase
+          .from('saved_sessions')
+          .select('session_id')
+          .eq('user_id', userId)
+          .in('session_id', sessionIds)
+        
+        userSaves = savesData?.map(s => s.session_id) || []
+      }
+
+      // Assembler les données finales avec l'ordre original
+      const sessionMap = {}
+      sessions.forEach(session => {
+        sessionMap[session.id] = {
+          id: session.id,
+          user_id: session.user_id,
+          club_id: session.club_id,
+          title: session.title,
+          photo_url: session.photo_url,
+          ingredients: session.ingredients,
+          duration: session.duration,
+          cuisine_type: session.cuisine_type,
+          difficulty: session.difficulty,
+          tags: session.tags,
+          created_at: session.created_at,
+          user: {
+            username: session.user?.username,
+            avatar_url: session.user?.avatar_url,
+            cooking_level: session.user?.cooking_level
+          },
+          likesCount: likeCountMap[session.id] || 0,
+          commentsCount: commentCountMap[session.id] || 0,
+          isLiked: userLikes.includes(session.id),
+          isSaved: userSaves.includes(session.id),
+          timeAgo: formatTimeAgo(session.created_at)
+        }
+      })
+
+      // Retourner dans l'ordre du club
+      return clubSessions.map(cs => sessionMap[cs.session_id]).filter(Boolean)
     } catch (err) {
       console.error('Erreur getClubFeed:', err)
       throw err
@@ -252,23 +344,6 @@ export const clubsService = {
       throw error
     }
   }
-}
-
-// Fonctions utilitaires déplacées dans helpers.js mais importées ici pour compatibilité
-const formatTimeAgo = (timestamp) => {
-  const now = new Date()
-  const time = new Date(timestamp)
-  const diffInSeconds = Math.floor((now - time) / 1000)
-
-  if (diffInSeconds < 60) return 'À l\'instant'
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}min`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}j`
-  
-  return time.toLocaleDateString('fr-FR', { 
-    day: 'numeric', 
-    month: 'short' 
-  })
 }
 
 const calculateTimeLeft = (endDate) => {

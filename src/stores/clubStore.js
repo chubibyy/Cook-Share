@@ -121,7 +121,8 @@ export const useClubStore = create((set, get) => ({
       if (loading) return
       set({ loading: true, error: null })
       const page = refresh ? 0 : clubFeedPage
-      const items = await clubsService.getClubFeed(clubId, page, 10)
+      const userId = useAuthStore.getState().user?.id
+      const items = await clubsService.getClubFeed(clubId, page, 10, userId)
       if (refresh) {
         set({ clubFeed: items, clubFeedPage: 1, clubFeedHasMore: items.length === 10, loading: false })
       } else {

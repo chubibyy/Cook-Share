@@ -1,12 +1,13 @@
 // src/components/cards/SessionCard.js
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { 
   View, 
   Text, 
   Image, 
   TouchableOpacity, 
   StyleSheet, 
-  Dimensions 
+  Dimensions,
+  Animated 
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Avatar, Badge } from '../common'
@@ -27,10 +28,44 @@ const SessionCard = ({
 }) => {
   const [liked, setLiked] = useState(session.isLiked || false)
   const [saved, setSaved] = useState(session.isSaved || false)
+  const [likesCount, setLikesCount] = useState(session.likesCount || 0)
+  const [commentsCount, setCommentsCount] = useState(session.commentsCount || 0)
+  
+  const likeAnimation = useRef(new Animated.Value(1)).current
+
+  // Synchroniser les compteurs avec les props de session
+  useEffect(() => {
+    setLikesCount(session.likesCount || 0)
+    setCommentsCount(session.commentsCount || 0)
+    setLiked(session.isLiked || false)
+    setSaved(session.isSaved || false)
+  }, [session.likesCount, session.commentsCount, session.isLiked, session.isSaved])
 
   const handleLike = () => {
-    setLiked(!liked)
-    onLike?.(session.id, !liked)
+    const newLikedState = !liked
+    setLiked(newLikedState)
+    setLikesCount(prevCount => newLikedState ? prevCount + 1 : prevCount - 1)
+    
+    // Animation de like
+    Animated.sequence([
+      Animated.timing(likeAnimation, {
+        toValue: 0.8,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeAnimation, {
+        toValue: 1.2,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeAnimation, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      })
+    ]).start()
+    
+    onLike?.(session.id, newLikedState)
   }
 
   const handleSave = () => {
@@ -108,7 +143,7 @@ const SessionCard = ({
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.userInfo}
-            onPress={() => onUserPress?.(session.user)}
+            onPress={() => onUserPress?.(session)}
           >
             <Avatar 
               source={{ uri: session.user.avatar_url }}
@@ -157,10 +192,16 @@ const SessionCard = ({
         {/* Actions */}
         <View style={styles.actions}>
           <TouchableOpacity style={styles.action} onPress={handleLike}>
-            <Text style={[styles.actionIcon, liked && styles.likedIcon]}>
+            <Animated.Text 
+              style={[
+                styles.actionIcon, 
+                liked && styles.likedIcon,
+                { transform: [{ scale: likeAnimation }] }
+              ]}
+            >
               {liked ? '❤️' : '🤍'}
-            </Text>
-            <Text style={styles.actionText}>{session.likesCount || 0}</Text>
+            </Animated.Text>
+            <Text style={styles.actionText}>{likesCount}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -168,7 +209,7 @@ const SessionCard = ({
             onPress={() => onComment?.(session)}
           >
             <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionText}>{session.commentsCount || 0}</Text>
+            <Text style={styles.actionText}>{commentsCount}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.action}>

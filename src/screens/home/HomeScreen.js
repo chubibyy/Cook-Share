@@ -54,8 +54,8 @@ export const HomeScreen = ({ navigation }) => {
     navigation.navigate('SessionDetail', { sessionId: session.id });
   };
 
-  const handleUserPress = (user) => {
-    navigation.navigate('Profile', { userId: user.id });
+  const handleUserPress = (session) => {
+    navigation.navigate('SessionDetail', { sessionId: session.id });
   };
 
   const handleLike = async (sessionId) => {

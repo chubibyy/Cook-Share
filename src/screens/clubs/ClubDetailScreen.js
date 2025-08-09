@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute } from '@react-navigation/native'
 import { useClubStore } from '../../stores/clubStore'
@@ -28,6 +28,7 @@ export const ClubDetailScreen = ({ navigation }) => {
 
   const [tab, setTab] = useState('feed') // 'feed' | 'chat'
   const [message, setMessage] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     loadClubById(clubId)
@@ -51,16 +52,35 @@ export const ClubDetailScreen = ({ navigation }) => {
     }
   }
 
+  const handleEditClub = () => {
+    navigation.navigate('EditClub', { clubId })
+  }
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await loadClubById(clubId)
+      await loadClubFeed(clubId, true) // refresh = true pour recharger depuis le début
+    } catch (error) {
+      console.error('Error refreshing club feed:', error)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [clubId, loadClubById, loadClubFeed])
+
+  const handleSessionPress = (session) => {
+    navigation.navigate('SessionDetail', { sessionId: session.id })
+  }
+
+  const handleUserPress = (user) => {
+    navigation.navigate('UserProfileScreen', { userId: user.id })
+  }
+
   const renderFeedItem = ({ item }) => (
     <SessionCard
-      session={{
-        ...item,
-        user: item.user || {},
-        likesCount: item.likesCount || 0,
-        commentsCount: item.commentsCount || 0,
-        timeAgo: new Date(item.created_at).toLocaleDateString('fr-FR'),
-      }}
-      onPress={(session) => navigation.navigate('SessionDetail', { sessionId: session.id })}
+      session={item}
+      onPress={() => handleSessionPress(item)}
+      onUserPress={handleUserPress}
     />
   )
 
@@ -83,15 +103,43 @@ export const ClubDetailScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>←</Text></TouchableOpacity>
-          <Text style={styles.title}>{currentClub?.name || 'Club'}</Text>
-          {currentClub?.userMembership?.role === 'owner' ? (
-            <View />
-          ) : (
-            <TouchableOpacity onPress={handleToggleMembership}>
-              <Text style={styles.joinBtn}>{currentClub?.userMembership ? 'Quitter' : 'Rejoindre'}</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>{currentClub?.name || 'Club'}</Text>
+            {currentClub?.userMembership?.role && (
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>
+                  {currentClub.userMembership.role === 'owner' ? '👑 Propriétaire' : 
+                   currentClub.userMembership.role === 'admin' ? '⚡ Admin' : '✅ Membre'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.headerActions}>
+            {/* Bouton Éditer pour admin/owner */}
+            {(currentClub?.userMembership?.role === 'admin' || currentClub?.userMembership?.role === 'owner') && (
+              <TouchableOpacity onPress={handleEditClub} style={styles.editButton}>
+                <Text style={styles.editIcon}>✏️</Text>
+                <Text style={styles.editText}>Éditer</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Bouton Rejoindre/Quitter pour les membres non-owner */}
+            {currentClub?.userMembership?.role !== 'owner' && (
+              <TouchableOpacity onPress={handleToggleMembership} style={styles.membershipButton}>
+                <Text style={[
+                  styles.membershipText,
+                  currentClub?.userMembership ? styles.leaveText : styles.joinText
+                ]}>
+                  {currentClub?.userMembership ? 'Quitter' : 'Rejoindre'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <View style={styles.tabs}>
@@ -101,12 +149,6 @@ export const ClubDetailScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => setTab('chat')} style={[styles.tab, tab==='chat' && styles.tabActive]}>
             <Text style={[styles.tabText, tab==='chat' && styles.tabTextActive]}>Chat</Text>
           </TouchableOpacity>
-          {/* Bouton +Session retiré par design */}
-          {(currentClub?.userMembership?.role === 'admin' || currentClub?.userMembership?.role === 'owner') && (
-            <TouchableOpacity onPress={() => navigation.navigate('EditClub', { clubId })} style={styles.editButton}>
-              <Text style={styles.editButtonText}>Éditer</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {tab === 'feed' ? (
@@ -117,6 +159,14 @@ export const ClubDetailScreen = ({ navigation }) => {
             contentContainerStyle={styles.list}
             onEndReached={() => clubFeedHasMore && loadClubFeed(clubId)}
             onEndReachedThreshold={0.2}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+                colors={[COLORS.primary]}
+              />
+            }
           />
         ) : (
           <View style={{ flex: 1 }}>
@@ -140,15 +190,114 @@ export const ClubDetailScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.md, paddingVertical: SPACING.md },
-  back: { fontSize: 22, color: COLORS.primary },
-  title: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold, color: COLORS.text },
-  joinBtn: { fontSize: TYPOGRAPHY.sizes.base, color: COLORS.primary },
-  tabs: { flexDirection: 'row', paddingHorizontal: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  tab: { paddingVertical: SPACING.sm, marginRight: SPACING.md },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: COLORS.primary },
-  tabText: { fontSize: TYPOGRAPHY.sizes.base, color: COLORS.textSecondary },
-  tabTextActive: { color: COLORS.primary, fontWeight: TYPOGRAPHY.weights.semibold },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: SPACING.md, 
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    backgroundColor: COLORS.surface
+  },
+  backButton: {
+    padding: SPACING.sm,
+    borderRadius: RADIUS.base,
+    backgroundColor: COLORS.backgroundSecondary
+  },
+  backIcon: { 
+    fontSize: 20, 
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.weights.bold
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: SPACING.md
+  },
+  title: { 
+    fontSize: TYPOGRAPHY.sizes.lg, 
+    fontWeight: TYPOGRAPHY.weights.bold, 
+    color: COLORS.text,
+    textAlign: 'center'
+  },
+  roleBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.full,
+    marginTop: SPACING.xs
+  },
+  roleText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.white,
+    fontWeight: TYPOGRAPHY.weights.semibold
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.base,
+    ...SHADOWS.small
+  },
+  editIcon: {
+    fontSize: 16,
+    marginRight: SPACING.xs
+  },
+  editText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.semibold
+  },
+  membershipButton: {
+    backgroundColor: COLORS.backgroundSecondary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.base,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight
+  },
+  membershipText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.semibold
+  },
+  joinText: {
+    color: COLORS.primary
+  },
+  leaveText: {
+    color: COLORS.error
+  },
+  tabs: { 
+    flexDirection: 'row', 
+    paddingHorizontal: SPACING.md, 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.borderLight,
+    backgroundColor: COLORS.background
+  },
+  tab: { 
+    paddingVertical: SPACING.sm, 
+    marginRight: SPACING.md,
+    paddingHorizontal: SPACING.md
+  },
+  tabActive: { 
+    borderBottomWidth: 2, 
+    borderBottomColor: COLORS.primary 
+  },
+  tabText: { 
+    fontSize: TYPOGRAPHY.sizes.base, 
+    color: COLORS.textSecondary 
+  },
+  tabTextActive: { 
+    color: COLORS.primary, 
+    fontWeight: TYPOGRAPHY.weights.semibold 
+  },
   list: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl },
   chatList: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.md },
   chatItem: { backgroundColor: COLORS.surface, borderRadius: RADIUS.base, padding: SPACING.md, marginVertical: SPACING.xs },

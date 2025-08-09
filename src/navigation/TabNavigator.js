@@ -15,6 +15,7 @@ import ClubDetailScreen from '../screens/clubs/ClubDetailScreen';
 import CreateCLubScreen from '../screens/clubs/CreateCLubScreen';
 import EditClubScreen from '../screens/clubs/EditClubScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { UserProfileScreen } from '../screens/profile/UserProfileScreen';
 import { COLORS, SPACING, SHADOWS } from '../utils/constants';
 import { useNotificationStore } from '../stores/notificationStore';
 
@@ -55,6 +56,7 @@ const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HomeScreen" component={HomeScreen} />
     <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
+    <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -62,6 +64,8 @@ const ChallengesStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ChallengesScreen" component={ChallengesScreen} />
     <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
+    <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
+    <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -71,12 +75,15 @@ const ClubsStack = () => (
     <Stack.Screen name="ClubDetail" component={ClubDetailScreen} />
     <Stack.Screen name="CreateClub" component={CreateCLubScreen} />
     <Stack.Screen name="EditClub" component={EditClubScreen} />
+    <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
+    <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
   </Stack.Navigator>
 );
 
 const ProfileStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+    <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
   </Stack.Navigator>
 );
 

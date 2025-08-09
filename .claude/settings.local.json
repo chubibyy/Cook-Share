@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm start)",
       "Bash(expo start:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
