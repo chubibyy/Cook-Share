@@ -74,13 +74,37 @@ export const ClubDetailScreen = ({ navigation }) => {
     }, [tab, clubId, loadClubFeed])
   )
 
+  // Gérer la subscription du chat pour les membres
   useEffect(() => {
-    if (tab === 'chat') {
-      loadChatMessages(clubId)
-      const sub = subscribeToChat(clubId)
-      return () => unsubscribeFromChat()
+    if (isMember) {
+      console.log('Membre détecté - démarrage subscription chat pour clubId:', clubId)
+      subscribeToChat(clubId)
     }
-  }, [tab, clubId, loadChatMessages, subscribeToChat, unsubscribeFromChat])
+    
+    // Cleanup seulement quand on quitte le composant ou n'est plus membre
+    return () => {
+      if (!isMember) {
+        console.log('Plus membre - nettoyage subscription chat')
+        unsubscribeFromChat()
+      }
+    }
+  }, [clubId, isMember, subscribeToChat, unsubscribeFromChat])
+
+  // Charger les messages quand on va sur l'onglet chat
+  useEffect(() => {
+    if (tab === 'chat' && isMember) {
+      console.log('Chargement messages chat pour clubId:', clubId)
+      loadChatMessages(clubId)
+    }
+  }, [tab, clubId, isMember, loadChatMessages])
+
+  // Cleanup général seulement quand on quitte complètement le composant
+  useEffect(() => {
+    return () => {
+      console.log('Nettoyage général - sortie du ClubDetailScreen')
+      unsubscribeFromChat()
+    }
+  }, [])
 
   const handleToggleMembership = async () => {
     if (!currentClub) return
@@ -208,8 +232,19 @@ export const ClubDetailScreen = ({ navigation }) => {
   const sendMessage = async () => {
     const content = message.trim()
     if (!content) return
-    await sendChatMessage(clubId, content)
-    setMessage('')
+    
+    try {
+      console.log('Envoi message:', content)
+      const result = await sendChatMessage(clubId, content)
+      if (result) {
+        console.log('Message envoyé avec succès:', result)
+        setMessage('')
+      } else {
+        console.error('Échec envoi message')
+      }
+    } catch (error) {
+      console.error('Erreur envoi message:', error)
+    }
   }
 
   const renderPendingRequestState = () => (

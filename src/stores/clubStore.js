@@ -159,29 +159,58 @@ export const useClubStore = create((set, get) => ({
     try {
       const userId = useAuthStore.getState().user?.id
       if (!userId) throw new Error('Utilisateur non connecté')
+      
       const msg = await clubsService.sendClubMessage(clubId, userId, content)
-      const { chatMessages } = get()
-      set({ chatMessages: [msg, ...chatMessages] })
+      
+      // Ne pas ajouter manuellement le message ici car la subscription temps réel s'en chargera
+      // Cela évite les doublons
+      console.log('Message envoyé, la subscription le recevra automatiquement')
+      
       return msg
     } catch (err) {
+      console.error('Erreur sendChatMessage:', err)
       return null
     }
   },
 
   subscribeToChat: (clubId) => {
+    // D'abord nettoyer toute subscription existante
+    const { chatSubscription } = get()
+    if (chatSubscription) {
+      console.log('🧹 Nettoyage subscription existante')
+      chatSubscription.unsubscribe()
+    }
+
+    console.log('🚀 Démarrage nouvelle subscription pour club:', clubId)
     const sub = clubsService.subscribeToClubMessages(clubId, (payload) => {
+      console.log('🔔 CALLBACK - Nouveau message temps réel reçu pour club', clubId)
+      console.log('Message payload:', payload.new)
+      
       const newMsg = payload.new
       const { chatMessages } = get()
-      set({ chatMessages: [newMsg, ...chatMessages] })
+      
+      // Éviter les doublons en vérifiant l'ID
+      const messageExists = chatMessages.some(msg => msg.id === newMsg.id)
+      if (!messageExists) {
+        console.log('✅ AJOUT - Nouveau message ajouté au store')
+        set({ chatMessages: [newMsg, ...chatMessages] })
+      } else {
+        console.log('⚠️ DOUBLON - Message déjà présent, ignoré')
+      }
     })
+    
     set({ chatSubscription: sub })
+    console.log('💾 Subscription sauvée dans le store')
     return sub
   },
 
   unsubscribeFromChat: () => {
     const { chatSubscription } = get()
-    chatSubscription?.unsubscribe?.()
-    set({ chatSubscription: null })
+    if (chatSubscription) {
+      console.log('Désabonnement du chat')
+      chatSubscription.unsubscribe()
+      set({ chatSubscription: null })
+    }
   },
 
   // Supprimer un club
