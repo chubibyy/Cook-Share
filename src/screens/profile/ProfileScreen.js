@@ -32,8 +32,12 @@ export const ProfileScreen = ({ navigation }) => {
       return;
     }
     try {
-      const { data: sessionsData } = await supabase.from('cooking_sessions').select('*').eq('user_id', user.id);
-      setSessions(sessionsData || []);
+      const { data: sessionsData } = await supabase
+        .from('cooking_sessions')
+        .select('*')
+        .eq('user_id', user.id);
+      // Ensure each session includes the current user
+      setSessions((sessionsData || []).map((s) => ({ ...s, user })));
       const userBadges = await usersService.getUserBadges(user.id);
       setBadges(userBadges);
     } catch (error) {
@@ -69,7 +73,9 @@ export const ProfileScreen = ({ navigation }) => {
     ]);
   };
 
-  const renderSessionItem = ({ item }) => <SessionCard session={item} />;
+  const renderSessionItem = ({ item }) => (
+    <SessionCard session={item.user ? item : { ...item, user }} />
+  );
 
   const BadgesSection = () => (
     <View style={styles.sectionContainer}>
