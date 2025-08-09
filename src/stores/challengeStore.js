@@ -11,6 +11,8 @@ export const useChallengeStore = create((set, get) => ({
   activeChallenges: [],
   pastChallenges: [],
   userChallenges: [],
+  clubChallenges: [],
+  userStats: null,
   currentChallenge: null,
   loading: false,
   error: null,
@@ -58,28 +60,17 @@ export const useChallengeStore = create((set, get) => ({
     }
   },
 
-  // Charger les challenges de l'utilisateur
-  loadUserChallenges: async () => {
+  // Charger les challenges personnels de l'utilisateur
+  loadUserChallenges: async (userId) => {
     try {
-      const userId = useAuthStore.getState().user?.id
       if (!userId) return
 
       set({ loading: true, error: null })
 
-      const { data, error } = await supabase
-        .from('challenge_participants')
-        .select(`
-          *,
-          challenge:challenges(*),
-          session:cooking_sessions(*)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
+      const userChallenges = await challengesService.getUserChallenges(userId)
 
       set({
-        userChallenges: data || [],
+        userChallenges: userChallenges || [],
         loading: false
       })
     } catch (error) {
@@ -91,10 +82,53 @@ export const useChallengeStore = create((set, get) => ({
     }
   },
 
-  // Participer à un challenge
-  participateInChallenge: async (challengeId) => {
+  // Charger les challenges des clubs de l'utilisateur
+  loadClubChallenges: async (userId) => {
     try {
-      const userId = useAuthStore.getState().user?.id
+      if (!userId) return
+
+      set({ loading: true, error: null })
+
+      const clubChallenges = await challengesService.getClubChallenges(userId)
+
+      set({
+        clubChallenges: clubChallenges || [],
+        loading: false
+      })
+    } catch (error) {
+      console.error('Erreur chargement challenges clubs:', error)
+      set({
+        error: error.message,
+        loading: false
+      })
+    }
+  },
+
+  // Charger les statistiques de l'utilisateur
+  loadUserStats: async (userId) => {
+    try {
+      if (!userId) return
+
+      set({ loading: true, error: null })
+
+      const userStats = await challengesService.getUserStats(userId)
+
+      set({
+        userStats: userStats,
+        loading: false
+      })
+    } catch (error) {
+      console.error('Erreur chargement statistiques utilisateur:', error)
+      set({
+        error: error.message,
+        loading: false
+      })
+    }
+  },
+
+  // Participer à un challenge
+  participateInChallenge: async (challengeId, userId) => {
+    try {
       if (!userId) throw new Error('Utilisateur non connecté')
 
       set({ loading: true, error: null })
@@ -102,7 +136,7 @@ export const useChallengeStore = create((set, get) => ({
       await challengesService.participateInChallenge(challengeId, userId)
 
       // Mettre à jour les challenges
-      const { challenges, activeChallenges } = get()
+      const { challenges, activeChallenges, userChallenges, clubChallenges } = get()
       
       const updateChallenge = (challenge) => {
         if (challenge.id === challengeId) {
@@ -113,7 +147,7 @@ export const useChallengeStore = create((set, get) => ({
               user_id: userId,
               challenge_id: challengeId
             },
-            participantsCount: challenge.participantsCount + 1
+            participantsCount: (challenge.participantsCount || 0) + 1
           }
         }
         return challenge
@@ -122,6 +156,49 @@ export const useChallengeStore = create((set, get) => ({
       set({
         challenges: challenges.map(updateChallenge),
         activeChallenges: activeChallenges.map(updateChallenge),
+        userChallenges: userChallenges.map(updateChallenge),
+        clubChallenges: clubChallenges.map(updateChallenge),
+        loading: false
+      })
+
+      return { success: true }
+    } catch (error) {
+      set({
+        error: error.message,
+        loading: false
+      })
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Abandonner un challenge
+  abandonChallenge: async (challengeId, userId) => {
+    try {
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      set({ loading: true, error: null })
+
+      await challengesService.abandonChallenge(challengeId, userId)
+
+      // Mettre à jour les challenges
+      const { challenges, activeChallenges, userChallenges, clubChallenges } = get()
+      
+      const updateChallenge = (challenge) => {
+        if (challenge.id === challengeId) {
+          return {
+            ...challenge,
+            userParticipation: null,
+            participantsCount: Math.max(0, (challenge.participantsCount || 0) - 1)
+          }
+        }
+        return challenge
+      }
+
+      set({
+        challenges: challenges.map(updateChallenge),
+        activeChallenges: activeChallenges.map(updateChallenge),
+        userChallenges: userChallenges.map(updateChallenge),
+        clubChallenges: clubChallenges.map(updateChallenge),
         loading: false
       })
 

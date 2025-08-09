@@ -62,6 +62,23 @@ export const challengesService = {
   // Participer à un challenge
   async participateInChallenge(challengeId, userId) {
     try {
+      // Vérifier d'abord si l'utilisateur participe déjà
+      const { data: existingParticipation, error: checkError } = await supabase
+        .from('challenge_participants')
+        .select('id, status')
+        .eq('challenge_id', challengeId)
+        .eq('user_id', userId)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
+
+      if (existingParticipation) {
+        throw new Error('Vous participez déjà à ce challenge')
+      }
+
+      // Ajouter la participation
       const { data, error } = await supabase
         .from('challenge_participants')
         .insert([{
@@ -77,6 +94,39 @@ export const challengesService = {
     } catch (error) {
       console.error('Erreur participation challenge:', error)
       throw error
+    }
+  },
+
+  // Abandonner un challenge
+  async abandonChallenge(challengeId, userId) {
+    try {
+      const { error } = await supabase
+        .from('challenge_participants')
+        .delete()
+        .eq('challenge_id', challengeId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return { success: true }
+    } catch (error) {
+      console.error('Erreur abandon challenge:', error)
+      throw error
+    }
+  },
+
+  // Récupérer le nombre de participants d'un challenge
+  async getChallengeParticipantsCount(challengeId) {
+    try {
+      const { data, error } = await supabase
+        .from('challenge_participants')
+        .select('id')
+        .eq('challenge_id', challengeId)
+
+      if (error) throw error
+      return data?.length || 0
+    } catch (error) {
+      console.error('Erreur comptage participants:', error)
+      return 0
     }
   },
 
@@ -113,6 +163,136 @@ export const challengesService = {
       return data
     } catch (error) {
       console.error('Erreur soumission challenge:', error)
+      throw error
+    }
+  },
+
+  // Récupérer les challenges personnels de l'utilisateur
+  async getUserChallenges(userId) {
+    try {
+      // Récupérer tous les challenges (pour l'instant tous sont considérés comme personnels)
+      const { data: challenges, error } = await supabase
+        .from('challenges')
+        .select('*')
+        .order('id', { ascending: false })
+
+      if (error) throw error
+
+      // Récupérer les participations de l'utilisateur séparément
+      const challengeIds = challenges?.map(c => c.id) || []
+      let userParticipations = []
+      
+      if (challengeIds.length > 0) {
+        const { data: participationsData, error: participationsError } = await supabase
+          .from('challenge_participants')
+          .select('*')
+          .in('challenge_id', challengeIds)
+          .eq('user_id', userId)
+
+        if (participationsError) {
+          console.warn('Erreur récupération participations:', participationsError)
+        } else {
+          userParticipations = participationsData || []
+        }
+      }
+
+      // Mapper les participations avec les challenges
+      const participationsMap = {}
+      userParticipations.forEach(p => {
+        participationsMap[p.challenge_id] = p
+      })
+
+      // Compter les participants pour chaque challenge
+      const participantCounts = {}
+      if (challengeIds.length > 0) {
+        const { data: allParticipants, error: countError } = await supabase
+          .from('challenge_participants')
+          .select('challenge_id')
+          .in('challenge_id', challengeIds)
+
+        if (!countError && allParticipants) {
+          allParticipants.forEach(p => {
+            participantCounts[p.challenge_id] = (participantCounts[p.challenge_id] || 0) + 1
+          })
+        }
+      }
+
+      return challenges?.map(challenge => ({
+        ...challenge,
+        participantsCount: participantCounts[challenge.id] || 0,
+        userParticipation: participationsMap[challenge.id] || null,
+        isActive: new Date(challenge.end_date) > new Date(),
+        timeLeft: calculateTimeLeft(challenge.end_date)
+      })) || []
+    } catch (error) {
+      console.error('Erreur récupération challenges utilisateur:', error)
+      throw error
+    }
+  },
+
+  // Récupérer les challenges des clubs de l'utilisateur
+  async getClubChallenges(userId) {
+    try {
+      // Pour l'instant, retourner un tableau vide car il n'y a pas de structure club_challenges dans le schema
+      // TODO: Implémenter quand la structure de base de données sera mise à jour
+      console.log('🏆 Club challenges pas encore implémentés - structure BD manquante')
+      return []
+    } catch (error) {
+      console.error('Erreur récupération challenges clubs:', error)
+      throw error
+    }
+  },
+
+  // Récupérer les statistiques de l'utilisateur
+  async getUserStats(userId) {
+    try {
+      // Récupérer les statistiques de base
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('xp')
+        .eq('id', userId)
+        .single()
+
+      if (profileError) throw profileError
+
+      // Compter les challenges complétés
+      const { data: completedChallenges, error: completedError } = await supabase
+        .from('challenge_participants')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'reussi')
+
+      if (completedError) throw completedError
+
+      // Calculer la série actuelle (challenges consécutifs ce mois)
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+
+      const { data: monthlyCompleted, error: monthlyError } = await supabase
+        .from('challenge_participants')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'reussi')
+
+      if (monthlyError) throw monthlyError
+
+      // Récupérer les badges récents (pour l'exemple, on simule quelques badges)
+      const recentBadges = [
+        { name: 'Premier challenge', emoji: '🎯' },
+        { name: 'Cuisinier régulier', emoji: '👨‍🍳' },
+        { name: 'Explorateur', emoji: '🗺️' }
+      ].slice(0, Math.min(3, Math.floor((completedChallenges?.length || 0) / 2)))
+
+      return {
+        totalXP: userProfile?.xp || 0,
+        completedChallenges: completedChallenges?.length || 0,
+        badges: recentBadges.length,
+        currentStreak: monthlyCompleted?.length || 0,
+        recentBadges
+      }
+    } catch (error) {
+      console.error('Erreur récupération statistiques utilisateur:', error)
       throw error
     }
   }

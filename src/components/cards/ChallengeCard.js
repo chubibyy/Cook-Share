@@ -16,6 +16,8 @@ const ChallengeCard = ({
   challenge,
   onPress,
   onParticipate,
+  type = 'user', // 'user' or 'club'
+  isProcessing = false,
   style,
   ...props
 }) => {
@@ -90,11 +92,20 @@ const ChallengeCard = ({
       <View style={styles.content}>
         {/* Status et titre */}
         <View style={styles.titleSection}>
-          <Badge 
-            text={getStatusText()} 
-            variant={isCompleted ? 'success' : isParticipating ? 'warning' : 'primary'}
-            size="small"
-          />
+          <View style={styles.badgeRow}>
+            <Badge 
+              text={getStatusText()} 
+              variant={isCompleted ? 'success' : isParticipating ? 'warning' : 'primary'}
+              size="small"
+            />
+            {type === 'club' && challenge.club && (
+              <Badge 
+                text={`🏆 ${challenge.club.name}`} 
+                variant="info"
+                size="small"
+              />
+            )}
+          </View>
           <Text style={styles.title}>{challenge.title}</Text>
         </View>
         
@@ -119,11 +130,15 @@ const ChallengeCard = ({
           
           {isActive && !isCompleted && (
             <Button
-              title={isParticipating ? "Continuer" : "Participer"}
-              variant={isParticipating ? "secondary" : "primary"}
+              title={
+                isProcessing ? "..." : 
+                isParticipating ? "Abandonner" : "Participer"
+              }
+              variant={isParticipating ? "outline" : "primary"}
               size="small"
               onPress={() => onParticipate?.(challenge)}
               style={styles.actionButton}
+              disabled={isProcessing}
             />
           )}
           
@@ -195,6 +210,12 @@ const styles = StyleSheet.create({
   },
   titleSection: {
     marginBottom: SPACING.sm,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
   },
   title: {
     fontSize: TYPOGRAPHY.sizes.lg,

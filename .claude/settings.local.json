@@ -4,7 +4,8 @@
       "Bash(npm start)",
       "Bash(expo start:*)",
       "Bash(sed:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx expo start:*)"
     ],
     "deny": []
   }
