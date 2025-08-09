@@ -14,7 +14,6 @@ import {
   Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuthStore } from '../../stores/authStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useChallengeStore } from '../../stores/challengeStore';
 import { Header } from '../../components/layout/Header';
@@ -25,13 +24,13 @@ import { usersService } from '../../services/users';
 
 export const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
-  const { user: currentUser } = useAuthStore();
   const { sessions, loading, loadFeed, refresh } = useSessionStore();
   const { userStats, loadUserStats } = useChallengeStore();
 
   const [userLoading, setUserLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [badges, setBadges] = useState([]);
+  const [profileUser, setProfileUser] = useState(null);
 
   // Filter sessions to show only this user's sessions
   const userSessions = sessions.filter(session => session.user_id === userId);
@@ -56,7 +55,11 @@ export const UserProfileScreen = ({ route, navigation }) => {
 
   const loadUserProfile = async () => {
     try {
-      const userBadges = await usersService.getUserBadges(userId);
+      const [userData, userBadges] = await Promise.all([
+        usersService.getUserProfile(userId),
+        usersService.getUserBadges(userId)
+      ]);
+      setProfileUser(userData);
       setBadges(userBadges);
       await loadUserStats(userId);
     } catch (error) {
@@ -182,9 +185,7 @@ export const UserProfileScreen = ({ route, navigation }) => {
     />
   );
 
-  // Get user info from first session if available
-  const displayUser = userSessions.length > 0 ? userSessions[0].user : null;
-  const displayLevel = displayUser ? getLevelFromXP(displayUser.xp || 0) : null;
+  const displayLevel = profileUser ? getLevelFromXP(profileUser.xp || 0) : null;
 
   if (userLoading) {
     return (
@@ -220,15 +221,18 @@ export const UserProfileScreen = ({ route, navigation }) => {
           <View style={styles.profileHeader}>
             <View style={styles.profileInfo}>
               <Avatar
-                source={{ uri: displayUser?.avatar_url }}
+                source={{ uri: profileUser?.avatar_url }}
                 size="large"
-                name={displayUser?.username || 'Utilisateur'}
-                xp={displayUser?.xp || 0}
-                userId={displayUser?.id || userId}
+                name={profileUser?.username || 'Utilisateur'}
+                xp={profileUser?.xp || 0}
+                userId={profileUser?.id || userId}
               />
               <View style={styles.userInfo}>
                 <Text style={styles.username}>
-                  {displayUser?.username || 'Nom d\'utilisateur'}
+                  {profileUser?.username || 'Nom d\'utilisateur'}
+                </Text>
+                <Text style={styles.bio} numberOfLines={2}>
+                  {profileUser?.bio || 'Aucune bio'}
                 </Text>
                 <Text style={styles.cookingLevel}>
                   Niveau: {displayLevel?.name || 'Non défini'}
@@ -302,6 +306,11 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weights.bold,
     color: COLORS.text,
     marginBottom: SPACING.xs,
+  },
+  bio: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
   },
   cookingLevel: {
     fontSize: TYPOGRAPHY.sizes.sm,
