@@ -25,6 +25,8 @@ export const ClubDetailScreen = ({ navigation }) => {
     sendChatMessage,
     subscribeToChat,
     unsubscribeFromChat,
+    pauseChatPolling,
+    resumeChatPolling,
     deleteClub,
     checkJoinRequestStatus,
     loadJoinRequests,
@@ -76,27 +78,36 @@ export const ClubDetailScreen = ({ navigation }) => {
 
   // Gérer la subscription du chat pour les membres
   useEffect(() => {
-    if (isMember) {
-      console.log('Membre détecté - démarrage subscription chat pour clubId:', clubId)
+    if (isMember && currentClub) {
+      console.log('🎯 [SCREEN] Membre détecté pour club:', currentClub.name)
+      console.log('🎯 [SCREEN] ClubId:', clubId)
+      console.log('🎯 [SCREEN] isMember:', isMember)
+      console.log('🚀 [SCREEN] Démarrage subscription...')
       subscribeToChat(clubId)
+    } else {
+      console.log('❌ [SCREEN] Pas membre ou club pas chargé:', { isMember, clubName: currentClub?.name })
     }
     
     // Cleanup seulement quand on quitte le composant ou n'est plus membre
     return () => {
       if (!isMember) {
-        console.log('Plus membre - nettoyage subscription chat')
+        console.log('🧹 [SCREEN] Plus membre - nettoyage subscription chat')
         unsubscribeFromChat()
       }
     }
-  }, [clubId, isMember, subscribeToChat, unsubscribeFromChat])
+  }, [clubId, isMember, currentClub, subscribeToChat, unsubscribeFromChat])
 
-  // Charger les messages quand on va sur l'onglet chat
+  // Charger les messages et gérer le polling quand on change d'onglet
   useEffect(() => {
     if (tab === 'chat' && isMember) {
-      console.log('Chargement messages chat pour clubId:', clubId)
+      console.log('📱 [SCREEN] Onglet CHAT actif - chargement messages et reprise polling')
       loadChatMessages(clubId)
+      resumeChatPolling() // Reprendre le polling quand on va sur Chat
+    } else {
+      console.log('📱 [SCREEN] Onglet FEED ou pas membre - pause du polling')
+      pauseChatPolling() // Pause le polling quand on n'est pas sur Chat
     }
-  }, [tab, clubId, isMember, loadChatMessages])
+  }, [tab, clubId, isMember, loadChatMessages, resumeChatPolling, pauseChatPolling])
 
   // Cleanup général seulement quand on quitte complètement le composant
   useEffect(() => {

@@ -74,13 +74,13 @@ export const clubsService = {
   },
 
   subscribeToClubMessages(clubId, callback) {
-    console.log('🔗 Création subscription pour club:', clubId)
+    console.log('🔗 [SUPABASE] Création subscription pour club:', clubId)
     
-    const channel = supabase.channel(`club_messages_${clubId}`, {
-      config: {
-        presence: { key: 'user_id' }
-      }
-    })
+    // Créer un channel unique avec timestamp pour éviter les conflits
+    const channelName = `club_${clubId}_${Date.now()}`
+    const channel = supabase.channel(channelName)
+    
+    console.log('📡 [SUPABASE] Channel créé:', channelName)
     
     channel
       .on('postgres_changes', { 
@@ -88,39 +88,23 @@ export const clubsService = {
         schema: 'public', 
         table: 'club_messages', 
         filter: `club_id=eq.${clubId}` 
-      }, async (payload) => {
-        console.log('📨 Message INSERT détecté:', payload)
-        
-        // Enrichir le message avec les données utilisateur
-        const messageId = payload.new.id
-        try {
-          const { data: enrichedMessage, error } = await supabase
-            .from('club_messages')
-            .select('*, user:users(*)')
-            .eq('id', messageId)
-            .single()
-          
-          if (!error && enrichedMessage) {
-            console.log('✅ Message enrichi:', enrichedMessage)
-            callback({ ...payload, new: enrichedMessage })
-          } else {
-            console.log('⚠️ Erreur enrichissement, fallback:', error)
-            callback(payload)
-          }
-        } catch (err) {
-          console.error('❌ Erreur enrichissement message:', err)
-          callback(payload)
-        }
+      }, (payload) => {
+        console.log('🔔 [SUPABASE] POSTGRES CHANGE DÉTECTÉ!')
+        console.log('📨 [SUPABASE] Payload reçu:', JSON.stringify(payload, null, 2))
+        console.log('🏷️ [SUPABASE] Club ID du message:', payload.new?.club_id)
+        console.log('🔄 [SUPABASE] Déclenchement du callback...')
+        callback(payload)
       })
       .subscribe((status, err) => {
+        console.log('📡 [SUPABASE] Changement statut subscription:', status)
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Subscription chat ACTIVE pour club:', clubId)
+          console.log('✅ [SUPABASE] SUBSCRIPTION ACTIVE pour club:', clubId)
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Erreur subscription chat:', err)
+          console.error('❌ [SUPABASE] ERREUR CHANNEL:', err)
         } else if (status === 'TIMED_OUT') {
-          console.error('⏰ Timeout subscription chat pour club:', clubId)
-        } else {
-          console.log('📡 Statut subscription:', status, err)
+          console.error('⏰ [SUPABASE] TIMEOUT pour club:', clubId)
+        } else if (status === 'CLOSED') {
+          console.log('🔒 [SUPABASE] Channel fermé pour club:', clubId)
         }
       })
     

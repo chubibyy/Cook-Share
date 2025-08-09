@@ -14,6 +14,8 @@ export const useClubStore = create((set, get) => ({
   clubFeedHasMore: true,
   chatMessages: [],
   chatSubscription: null,
+  chatPollingInterval: null,
+  chatPollingActive: false,
   joinRequests: [],
   requestsLoading: false,
 
@@ -160,57 +162,96 @@ export const useClubStore = create((set, get) => ({
       const userId = useAuthStore.getState().user?.id
       if (!userId) throw new Error('Utilisateur non connecté')
       
+      console.log('📤 Envoi du message...')
       const msg = await clubsService.sendClubMessage(clubId, userId, content)
       
-      // Ne pas ajouter manuellement le message ici car la subscription temps réel s'en chargera
-      // Cela évite les doublons
-      console.log('Message envoyé, la subscription le recevra automatiquement')
+      if (msg) {
+        console.log('✅ Message envoyé avec succès, refresh immédiat...')
+        // Refresh immédiat pour l'expéditeur
+        await get().loadChatMessages(clubId)
+        // La subscription se chargera de refresh les autres utilisateurs
+      }
       
       return msg
     } catch (err) {
-      console.error('Erreur sendChatMessage:', err)
+      console.error('❌ Erreur sendChatMessage:', err)
       return null
     }
   },
 
   subscribeToChat: (clubId) => {
     // D'abord nettoyer toute subscription existante
-    const { chatSubscription } = get()
+    const { chatSubscription, chatPollingInterval } = get()
     if (chatSubscription) {
-      console.log('🧹 Nettoyage subscription existante')
+      console.log('🧹 [STORE] Nettoyage subscription existante')
       chatSubscription.unsubscribe()
     }
+    if (chatPollingInterval) {
+      console.log('🧹 [STORE] Nettoyage polling existant')
+      clearInterval(chatPollingInterval)
+    }
 
-    console.log('🚀 Démarrage nouvelle subscription pour club:', clubId)
+    console.log('🚀 [STORE] Démarrage subscription pour club:', clubId)
     const sub = clubsService.subscribeToClubMessages(clubId, (payload) => {
-      console.log('🔔 CALLBACK - Nouveau message temps réel reçu pour club', clubId)
-      console.log('Message payload:', payload.new)
+      console.log('🔥 [STORE] CALLBACK APPELÉ! Message détecté pour club:', clubId)
+      console.log('📦 [STORE] Payload dans store:', payload)
+      console.log('🔄 [STORE] Déclenchement loadChatMessages...')
       
-      const newMsg = payload.new
-      const { chatMessages } = get()
-      
-      // Éviter les doublons en vérifiant l'ID
-      const messageExists = chatMessages.some(msg => msg.id === newMsg.id)
-      if (!messageExists) {
-        console.log('✅ AJOUT - Nouveau message ajouté au store')
-        set({ chatMessages: [newMsg, ...chatMessages] })
-      } else {
-        console.log('⚠️ DOUBLON - Message déjà présent, ignoré')
-      }
+      // Recharger tous les messages depuis la base avec délai pour être sûr
+      setTimeout(() => {
+        console.log('⏰ [STORE] Exécution du refresh après délai')
+        get().loadChatMessages(clubId)
+      }, 500)
     })
     
-    set({ chatSubscription: sub })
-    console.log('💾 Subscription sauvée dans le store')
+    // BACKUP: Polling toutes les 3 secondes au cas où Supabase realtime ne fonctionne pas
+    console.log('⏰ [STORE] Démarrage polling backup (toutes les 3s)')
+    const pollingInterval = setInterval(() => {
+      // Vérifier si le polling est toujours actif (pour éviter les fuites mémoire)
+      const currentState = get()
+      if (currentState.chatPollingInterval && currentState.chatPollingActive) {
+        console.log('🔄 [POLLING] Refresh automatique des messages')
+        get().loadChatMessages(clubId)
+      } else {
+        console.log('⏸️ [POLLING] Polling désactivé, pas de refresh')
+      }
+    }, 3000)
+    
+    set({ 
+      chatSubscription: sub, 
+      chatPollingInterval: pollingInterval,
+      chatPollingActive: true  // Activer le polling au démarrage
+    })
+    console.log('💾 [STORE] Subscription + Polling sauvés et activés dans le store')
     return sub
   },
 
   unsubscribeFromChat: () => {
-    const { chatSubscription } = get()
+    const { chatSubscription, chatPollingInterval } = get()
     if (chatSubscription) {
-      console.log('Désabonnement du chat')
+      console.log('🧹 [STORE] Désabonnement du chat')
       chatSubscription.unsubscribe()
-      set({ chatSubscription: null })
     }
+    if (chatPollingInterval) {
+      console.log('🧹 [STORE] Arrêt du polling')
+      clearInterval(chatPollingInterval)
+    }
+    set({ 
+      chatSubscription: null, 
+      chatPollingInterval: null, 
+      chatPollingActive: false 
+    })
+  },
+
+  // Fonctions pour contrôler le polling
+  pauseChatPolling: () => {
+    console.log('⏸️ [STORE] Pause du polling chat')
+    set({ chatPollingActive: false })
+  },
+
+  resumeChatPolling: () => {
+    console.log('▶️ [STORE] Reprise du polling chat')
+    set({ chatPollingActive: true })
   },
 
   // Supprimer un club
