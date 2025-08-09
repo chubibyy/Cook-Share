@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useChallengeStore } from '../../stores/challengeStore';
 import { Header } from '../../components/layout/Header';
 import { SessionCard } from '../../components/cards/SessionCard';
 import Button from '../../components/common/Button';
@@ -22,9 +23,9 @@ import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/consta
 
 export const HomeScreen = ({ navigation }) => {
   const { user, signOut, addXP } = useAuthStore();
-  const { 
+  const {
     sessions, 
-    loading, 
+    loading: sessionsLoading, 
     hasMore, 
     loadFeed, 
     loadMore, 
@@ -32,40 +33,42 @@ export const HomeScreen = ({ navigation }) => {
     toggleLike, 
     toggleSave 
   } = useSessionStore();
+  const { popularChallenge, loading: challengeLoading, loadPopularChallenge } = useChallengeStore();
 
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadFeed(true);
-  }, [loadFeed]);
+    loadPopularChallenge();
+  }, [loadFeed, loadPopularChallenge]);
 
   // Refresh automatique à chaque fois que l'écran reçoit le focus
   useFocusEffect(
     useCallback(() => {
       console.log('🏠 [FOCUS] HomeScreen reçoit le focus - refresh automatique')
       refresh()
-    }, [refresh])
+      loadPopularChallenge()
+    }, [refresh, loadPopularChallenge])
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), loadPopularChallenge()]);
     setRefreshing(false);
-  }, [refresh]);
+  }, [refresh, loadPopularChallenge]);
 
   const handleLoadMore = useCallback(() => {
-    if (hasMore && !loading) {
+    if (hasMore && !sessionsLoading) {
       loadMore();
     }
-  }, [hasMore, loading, loadMore]);
+  }, [hasMore, sessionsLoading, loadMore]);
 
   const handleSessionPress = (session) => {
-    console.log('Navigating to session detail:', session.id);
     navigation.navigate('SessionDetail', { sessionId: session.id });
   };
 
   const handleUserPress = (session) => {
-    navigation.navigate('SessionDetail', { sessionId: session.id });
+    navigation.navigate('UserProfileScreen', { userId: session.user_id });
   };
 
   const handleLike = async (sessionId) => {
@@ -85,8 +88,6 @@ export const HomeScreen = ({ navigation }) => {
 
   const handleShare = async (sessionId) => {
     if (!sessionId) return
-    
-    // Trouver la session dans le feed
     const session = sessions.find(s => s.id === sessionId)
     if (!session) return
     
@@ -99,31 +100,18 @@ export const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const handleTestXP = async () => {
-    const result = await addXP(50, 'test');
-    if (result.success) {
-      Alert.alert('XP Gagné!', `+${result.xpGained} XP`);
-    }
-  };
-
-  const renderSession = ({ item: session }) => {
-    console.log('Rendering session:', session.id)
-    console.log('Session photo_url:', session.photo_url)
-    console.log('Full session data:', session)
-    
-    return (
-      <SessionCard
-        session={session}
-        onPress={handleSessionPress}
-        onUserPress={handleUserPress}
-        onLike={handleLike}
-        onSave={handleSave}
-        onComment={handleComment}
-        onShare={handleShare}
-        style={styles.sessionCard}
-      />
-    )
-  };
+  const renderSession = ({ item: session }) => (
+    <SessionCard
+      session={session}
+      onPress={handleSessionPress}
+      onUserPress={handleUserPress}
+      onLike={handleLike}
+      onSave={handleSave}
+      onComment={handleComment}
+      onShare={handleShare}
+      style={styles.sessionCard}
+    />
+  );
 
   const renderEmptyFeed = () => (
     <View style={styles.emptyContainer}>
@@ -141,7 +129,7 @@ export const HomeScreen = ({ navigation }) => {
   );
 
   const renderFooter = () => {
-    if (!loading) return null;
+    if (!sessionsLoading) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={COLORS.primary} />
@@ -149,19 +137,44 @@ export const HomeScreen = ({ navigation }) => {
     );
   };
 
+  const PopularChallenge = () => {
+    if (challengeLoading) {
+      return <View style={styles.popularChallengeCard}><ActivityIndicator color={COLORS.primary} /></View>
+    }
+
+    if (!popularChallenge) {
+      return (
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeText}>
+            Bonjour {user?.username || 'Chef'} ! 👋
+          </Text>
+        </View>
+      )
+    }
+
+    return (
+      <TouchableOpacity 
+        style={styles.popularChallengeCard}
+        onPress={() => navigation.navigate('Challenges', { 
+          screen: 'ChallengeDetail', 
+          params: { challengeId: popularChallenge.id, challengeType: 'user' } 
+        })}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.popularChallengeLabel}>🔥 Challenge du moment</Text>
+          <Text style={styles.popularChallengeName} numberOfLines={1}>{popularChallenge.title}</Text>
+          <Text style={styles.popularChallengeParticipants}>
+            {popularChallenge.participantsCount} participant{popularChallenge.participantsCount > 1 ? 's' : ''}
+          </Text>
+        </View>
+        <Text style={styles.popularChallengeCta}>→</Text>
+      </TouchableOpacity>
+    )
+  }
+
   const renderHeader = () => (
     <View style={styles.feedHeader}>
-      <View style={styles.welcomeSection}>
-        <Text style={styles.welcomeText}>
-          Bonjour {user?.username || 'Chef'} ! 👋
-        </Text>
-        <TouchableOpacity 
-          style={styles.createSessionButton}
-          onPress={() => navigation.navigate('CreateSession')}
-        >
-          <Text style={styles.createSessionText}>➕ Partager une création</Text>
-        </TouchableOpacity>
-      </View>
+      <PopularChallenge />
       
       {sessions.length > 0 && (
         <Text style={styles.sectionTitle}>🔥 Dernières créations</Text>
@@ -187,7 +200,7 @@ export const HomeScreen = ({ navigation }) => {
         renderItem={renderSession}
         keyExtractor={(item) => item.id.toString()}
         ListHeaderComponent={renderHeader}
-        ListEmptyComponent={!loading ? renderEmptyFeed : null}
+        ListEmptyComponent={!sessionsLoading ? renderEmptyFeed : null}
         ListFooterComponent={renderFooter}
         refreshControl={
           <RefreshControl
@@ -202,25 +215,6 @@ export const HomeScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.feedContainer}
       />
-
-      {/* Debug section pour développement */}
-      {__DEV__ && (
-        <View style={styles.debugSection}>
-          <Button
-            title="Test +50 XP"
-            onPress={handleTestXP}
-            variant="outline"
-            size="small"
-            style={{ marginRight: SPACING.sm }}
-          />
-          <Button
-            title="Déconnexion"
-            onPress={signOut}
-            variant="outline"
-            size="small"
-          />
-        </View>
-      )}
     </SafeAreaView>
   );
 };
@@ -235,34 +229,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
   },
   feedHeader: {
-    marginBottom: SPACING.md,
+    paddingVertical: SPACING.md,
   },
   welcomeSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginVertical: SPACING.sm,
+    padding: SPACING.lg,
     ...SHADOWS.sm,
+    marginBottom: SPACING.lg,
   },
   welcomeText: {
     fontSize: TYPOGRAPHY.sizes.lg,
     fontWeight: TYPOGRAPHY.weights.semibold,
     color: COLORS.text,
-    flex: 1,
   },
-  createSessionButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.sm,
+  popularChallengeCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryAlpha,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginBottom: SPACING.lg,
   },
-  createSessionText: {
-    color: COLORS.white,
+  popularChallengeLabel: {
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: TYPOGRAPHY.weights.medium,
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+  },
+  popularChallengeName: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  popularChallengeParticipants: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.textSecondary,
+  },
+  popularChallengeCta: {
+    fontSize: TYPOGRAPHY.sizes.xxl,
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.weights.light,
   },
   sectionTitle: {
     fontSize: TYPOGRAPHY.sizes.lg,
@@ -305,17 +316,5 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: SPACING.lg,
     alignItems: 'center',
-  },
-  debugSection: {
-    position: 'absolute',
-    bottom: SPACING.md,
-    right: SPACING.md,
-    flexDirection: 'row',
-    backgroundColor: COLORS.warning + '10',
-    borderRadius: RADIUS.sm,
-    padding: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.warning + '30',
-    ...SHADOWS.sm,
   },
 });

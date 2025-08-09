@@ -14,6 +14,7 @@ export const useChallengeStore = create((set, get) => ({
   clubChallenges: [],
   userStats: null,
   currentChallenge: null,
+  popularChallenge: null,
   loading: false,
   error: null,
 
@@ -21,6 +22,17 @@ export const useChallengeStore = create((set, get) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
+
+  loadPopularChallenge: async () => {
+    try {
+      set({ loading: true, error: null });
+      const challenge = await challengesService.getPopularChallenge();
+      set({ popularChallenge: challenge, loading: false });
+    } catch (error) {
+      console.error('Erreur chargement challenge populaire:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
 
   // Charger tous les challenges
   loadChallenges: async (status = 'all') => {

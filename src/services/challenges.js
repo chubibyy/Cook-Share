@@ -461,5 +461,35 @@ export const challengesService = {
       console.error('Erreur récupération statistiques utilisateur:', error)
       throw error
     }
+  },
+
+  // Récupérer le challenge le plus populaire (actif)
+  async getPopularChallenge() {
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('challenges')
+        .select('*, participants:challenge_participants(count)')
+        .gte('end_date', now) // Seulement les challenges actifs
+        .order('count', { foreignTable: 'challenge_participants', ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        // PGRST116 = single() row not found, which is not an error here
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        throw error;
+      }
+
+      return data ? {
+        ...data,
+        participantsCount: data.participants[0]?.count || 0,
+      } : null;
+    } catch (error) {
+      console.error('Erreur récupération challenge populaire:', error);
+      throw error;
+    }
   }
 }
