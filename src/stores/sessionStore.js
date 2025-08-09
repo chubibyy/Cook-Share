@@ -121,63 +121,66 @@ export const useSessionStore = create((set, get) => ({
 
   // Toggle like
   toggleLike: async (sessionId) => {
+    const userId = useAuthStore.getState().user?.id
+    if (!userId) throw new Error('Utilisateur non connecté')
+
+    const { sessions, currentSession } = get()
+    const originalSessions = [...sessions]
+    const originalCurrentSession = currentSession ? { ...currentSession } : null
+
+    // Optimistic update
+    const updateSessionState = (session) => {
+      if (!session) return null
+      const isLiked = !session.isLiked
+      return {
+        ...session,
+        isLiked,
+        likesCount: session.likesCount + (isLiked ? 1 : -1)
+      }
+    }
+
+    const updatedSessions = sessions.map(s => s.id === sessionId ? updateSessionState(s) : s)
+    const updatedCurrentSession = currentSession?.id === sessionId ? updateSessionState(currentSession) : currentSession
+
+    set({ sessions: updatedSessions, currentSession: updatedCurrentSession })
+
     try {
-      const userId = useAuthStore.getState().user?.id
-      if (!userId) throw new Error('Utilisateur non connecté')
-
-      const { sessions } = get()
-      
-      // Optimistic update
-      const updatedSessions = sessions.map(session => {
-        if (session.id === sessionId) {
-          const newLiked = !session.isLiked
-          return {
-            ...session,
-            isLiked: newLiked,
-            likesCount: session.likesCount + (newLiked ? 1 : -1)
-          }
-        }
-        return session
-      })
-
-      set({ sessions: updatedSessions })
-
-      // Requête API
+      // API call
       await sessionsService.toggleLike(sessionId, userId)
     } catch (error) {
-      // Revert optimistic update on error
-      get().refresh()
       console.error('Erreur toggle like:', error)
+      // Revert on error
+      set({ sessions: originalSessions, currentSession: originalCurrentSession })
     }
   },
 
   // Toggle save
   toggleSave: async (sessionId) => {
+    const userId = useAuthStore.getState().user?.id
+    if (!userId) throw new Error('Utilisateur non connecté')
+
+    const { sessions, currentSession } = get()
+    const originalSessions = [...sessions]
+    const originalCurrentSession = currentSession ? { ...currentSession } : null
+
+    // Optimistic update
+    const updateSessionState = (session) => {
+      if (!session) return null
+      return { ...session, isSaved: !session.isSaved }
+    }
+
+    const updatedSessions = sessions.map(s => s.id === sessionId ? updateSessionState(s) : s)
+    const updatedCurrentSession = currentSession?.id === sessionId ? updateSessionState(currentSession) : currentSession
+    
+    set({ sessions: updatedSessions, currentSession: updatedCurrentSession })
+
     try {
-      const userId = useAuthStore.getState().user?.id
-      if (!userId) throw new Error('Utilisateur non connecté')
-
-      const { sessions } = get()
-      
-      // Optimistic update
-      const updatedSessions = sessions.map(session => {
-        if (session.id === sessionId) {
-          return {
-            ...session,
-            isSaved: !session.isSaved
-          }
-        }
-        return session
-      })
-
-      set({ sessions: updatedSessions })
-
-      // Requête API
+      // API call
       await sessionsService.toggleSave(sessionId, userId)
     } catch (error) {
-      // Revert optimistic update on error
-      get().refresh()
       console.error('Erreur toggle save:', error)
+      // Revert on error
+      set({ sessions: originalSessions, currentSession: originalCurrentSession })
     }
   },
 
@@ -218,6 +221,49 @@ export const useSessionStore = create((set, get) => ({
       return comment
     } catch (error) {
       console.error('Erreur ajout commentaire:', error)
+      throw error
+    }
+  },
+
+  // Supprimer un commentaire
+  deleteComment: async (sessionId, commentId) => {
+    try {
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      await sessionsService.deleteComment(commentId, userId)
+
+      // Mettre à jour le state local
+      const { sessions, currentSession } = get()
+      
+      // Mettre à jour le compteur de commentaires dans les sessions
+      const updatedSessions = sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            commentsCount: Math.max(0, session.commentsCount - 1)
+          }
+        }
+        return session
+      })
+
+      set({ sessions: updatedSessions })
+
+      // Si c'est la session actuelle, supprimer le commentaire de la liste
+      if (currentSession?.id === sessionId) {
+        const updatedComments = currentSession.comments?.filter(comment => comment.id !== commentId) || []
+        set({
+          currentSession: {
+            ...currentSession,
+            comments: updatedComments,
+            commentsCount: Math.max(0, currentSession.commentsCount - 1)
+          }
+        })
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Erreur suppression commentaire:', error)
       throw error
     }
   }

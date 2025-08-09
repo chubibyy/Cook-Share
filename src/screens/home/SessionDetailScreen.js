@@ -34,7 +34,8 @@ export const SessionDetailScreen = ({ route, navigation }) => {
     getSessionById,
     toggleLike,
     toggleSave,
-    addComment
+    addComment,
+    deleteComment
   } = useSessionStore();
 
   const [commentText, setCommentText] = useState('');
@@ -80,6 +81,34 @@ export const SessionDetailScreen = ({ route, navigation }) => {
     } finally {
       setCommentLoading(false);
     }
+  };
+
+  const handleDeleteComment = (commentId) => {
+    if (!currentSession) return;
+
+    Alert.alert(
+      'Supprimer le commentaire',
+      'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteComment(currentSession.id, commentId);
+              Alert.alert('Succès', 'Commentaire supprimé !');
+            } catch (error) {
+              console.error('Error deleting comment:', error);
+              Alert.alert('Erreur', "Impossible de supprimer le commentaire");
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleShare = async () => {
@@ -307,7 +336,17 @@ export const SessionDetailScreen = ({ route, navigation }) => {
                       />
                       <View style={styles.commentContent}>
                         <View style={styles.commentBubble}>
-                          <Text style={styles.commentAuthor}>{comment.user?.username}</Text>
+                          <View style={styles.commentHeader}>
+                            <Text style={styles.commentAuthor}>{comment.user?.username}</Text>
+                            {comment.user_id === user?.id && (
+                              <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={() => handleDeleteComment(comment.id)}
+                              >
+                                <Text style={styles.deleteButtonText}>×</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
                           <Text style={styles.commentText}>{comment.content}</Text>
                         </View>
                         <Text style={styles.commentTime}>
@@ -595,11 +634,32 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     ...SHADOWS.sm,
   },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
   commentAuthor: {
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: TYPOGRAPHY.weights.semibold,
     color: COLORS.primary,
-    marginBottom: SPACING.xs,
+    flex: 1,
+  },
+  deleteButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.sm,
+  },
+  deleteButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    lineHeight: 16,
   },
   commentText: {
     fontSize: TYPOGRAPHY.sizes.base,

@@ -6,39 +6,98 @@ export const sessionsService = {
   // Récupérer le feed principal avec pagination
   async getFeed(page = 0, limit = 10, userId = null) {
     try {
+      // Base query for sessions with user info
       let query = supabase
         .from('cooking_sessions')
         .select(`
           *,
-          user:users(*),
-          likes:likes(count),
-          comments:comments(count),
-          user_like:likes(id),
-          user_saved:saved_sessions(id)
+          user:users(username, avatar_url, cooking_level)
         `)
         .order('created_at', { ascending: false })
         .range(page * limit, (page + 1) * limit - 1)
 
-      // Si utilisateur connecté, récupérer ses interactions
-      if (userId) {
-        query = query
-          .eq('user_like.user_id', userId)
-          .eq('user_saved.user_id', userId)
-      }
-
-      const { data, error } = await query
+      const { data: sessions, error } = await query
 
       if (error) throw error
 
-      // Formatter les données pour l'affichage
-      return data?.map(session => ({
-        ...session,
-        likesCount: session.likes?.[0]?.count || 0,
-        commentsCount: session.comments?.[0]?.count || 0,
-        isLiked: !!session.user_like?.[0],
-        isSaved: !!session.user_saved?.[0],
+      if (!sessions) return []
+
+      // Get session IDs for counting interactions
+      const sessionIds = sessions.map(s => s.id)
+
+      // Count likes for all sessions
+      const { data: likeCounts } = await supabase
+        .from('likes')
+        .select('session_id')
+        .in('session_id', sessionIds)
+
+      // Count comments for all sessions  
+      const { data: commentCounts } = await supabase
+        .from('comments')
+        .select('session_id')
+        .in('session_id', sessionIds)
+
+      // Create count maps
+      const likeCountMap = {}
+      const commentCountMap = {}
+
+      likeCounts?.forEach(like => {
+        likeCountMap[like.session_id] = (likeCountMap[like.session_id] || 0) + 1
+      })
+
+      commentCounts?.forEach(comment => {
+        commentCountMap[comment.session_id] = (commentCountMap[comment.session_id] || 0) + 1
+      })
+
+      // If user is provided, get their specific interactions
+      let userLikes = []
+      let userSaves = []
+
+      if (userId) {
+        const sessionIds = sessions.map(s => s.id)
+        
+        // Get user's likes for these sessions
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('session_id')
+          .eq('user_id', userId)
+          .in('session_id', sessionIds)
+        
+        userLikes = likesData?.map(l => l.session_id) || []
+
+        // Get user's saves for these sessions
+        const { data: savesData } = await supabase
+          .from('saved_sessions')
+          .select('session_id')
+          .eq('user_id', userId)
+          .in('session_id', sessionIds)
+        
+        userSaves = savesData?.map(s => s.session_id) || []
+      }
+
+      return sessions.map(session => ({
+        id: session.id,
+        user_id: session.user_id,
+        club_id: session.club_id,
+        title: session.title,
+        photo_url: session.photo_url,
+        ingredients: session.ingredients,
+        duration: session.duration,
+        cuisine_type: session.cuisine_type,
+        difficulty: session.difficulty,
+        tags: session.tags,
+        created_at: session.created_at,
+        user: {
+          username: session.user?.username,
+          avatar_url: session.user?.avatar_url,
+          cooking_level: session.user?.cooking_level
+        },
+        likesCount: likeCountMap[session.id] || 0,
+        commentsCount: commentCountMap[session.id] || 0,
+        isLiked: userLikes.includes(session.id),
+        isSaved: userSaves.includes(session.id),
         timeAgo: formatTimeAgo(session.created_at)
-      })) || []
+      }))
     } catch (error) {
       console.error('Erreur récupération feed:', error)
       throw error
@@ -48,68 +107,19 @@ export const sessionsService = {
   // Créer une nouvelle session culinaire
   async createSession(sessionData) {
     try {
-      console.log('=== SESSION CREATION DEBUG ===')
-      console.log('Original session data:', sessionData)
-      console.log('Current user from auth:', await supabase.auth.getUser())
-      
-      // Data object matching exactly the database schema
-      const cleanData = {
-        user_id: sessionData.user_id,
-        club_id: sessionData.club_id || null,
-        title: sessionData.title,
-        photo_url: sessionData.photo_url,
-        ingredients: sessionData.ingredients,
-        duration: sessionData.duration,
-        cuisine_type: sessionData.cuisine_type,
-        difficulty: sessionData.difficulty,
-        tags: sessionData.tags
-        // created_at is handled automatically by the database
-      }
-      
-      console.log('Clean data for insert:', cleanData)
-      
-      // Test: First try a simple insert without the select join
-      console.log('Attempting simple insert first...')
-      const { data: simpleData, error: simpleError } = await supabase
+      const { data, error } = await supabase
         .from('cooking_sessions')
-        .insert([cleanData])
-        .select('*')
+        .insert([sessionData])
+        .select(`
+          *,
+          user:users(*)
+        `)
         .single()
 
-      if (simpleError) {
-        console.error('SIMPLE INSERT ERROR:', simpleError)
-        console.error('Error code:', simpleError.code)
-        console.error('Error message:', simpleError.message)
-        console.error('Error details:', simpleError.details)
-        throw simpleError
-      }
-      
-      console.log('Simple insert successful:', simpleData)
-      
-      // Now try to get the user data separately
-      console.log('Getting user data separately...')
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', cleanData.user_id)
-        .single()
-        
-      if (userError) {
-        console.error('USER SELECT ERROR:', userError)
-        // Continue even if user select fails
-      } else {
-        console.log('User data retrieved:', userData)
-        simpleData.user = userData
-      }
-      
-      console.log('Final session data:', simpleData)
-      return simpleData
+      if (error) throw error
+      return data
     } catch (error) {
-      console.error('=== SESSION CREATION FAILED ===')
-      console.error('Error type:', typeof error)
-      console.error('Error name:', error.name)
-      console.error('Error message:', error.message)
-      console.error('Full error:', error)
+      console.error('Erreur création session:', error)
       throw error
     }
   },
@@ -117,36 +127,84 @@ export const sessionsService = {
   // Obtenir une session par ID
   async getSessionById(sessionId, userId = null) {
     try {
-      let query = supabase
+      // Get session with user info
+      const { data: session, error } = await supabase
         .from('cooking_sessions')
         .select(`
           *,
-          user:users(*),
-          likes:likes(count),
-          comments:comments(
-            *,
-            user:users(*)
-          ),
-          user_like:likes(id),
-          user_saved:saved_sessions(id)
+          user:users(username, avatar_url, cooking_level)
         `)
         .eq('id', sessionId)
+        .single()
 
-      if (userId) {
-        query = query
-          .eq('user_like.user_id', userId)
-          .eq('user_saved.user_id', userId)
-      }
-
-      const { data, error } = await query.single()
       if (error) throw error
 
+      // Count likes for this session
+      const { count: likesCount } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', sessionId)
+
+      // Fetch comments separately
+      const { data: comments, error: commentsError } = await supabase
+        .from('comments')
+        .select(`*, user:users(*)`)
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+
+      if (commentsError) {
+        console.error('Error fetching comments:', commentsError)
+      }
+
+      // Check user-specific interactions if userId provided
+      let isLiked = false
+      let isSaved = false
+
+      if (userId) {
+        // Check if user liked this session
+        const { data: likeData } = await supabase
+          .from('likes')
+          .select('id')
+          .eq('session_id', sessionId)
+          .eq('user_id', userId)
+          .single()
+        
+        isLiked = !!likeData
+
+        // Check if user saved this session
+        const { data: saveData } = await supabase
+          .from('saved_sessions')
+          .select('id')
+          .eq('session_id', sessionId)
+          .eq('user_id', userId)
+          .single()
+        
+        isSaved = !!saveData
+      }
+
       return {
-        ...data,
-        likesCount: data.likes?.[0]?.count || 0,
-        isLiked: !!data.user_like?.[0],
-        isSaved: !!data.user_saved?.[0],
-        timeAgo: formatTimeAgo(data.created_at)
+        id: session.id,
+        user_id: session.user_id,
+        club_id: session.club_id,
+        title: session.title,
+        photo_url: session.photo_url,
+        ingredients: session.ingredients,
+        duration: session.duration,
+        cuisine_type: session.cuisine_type,
+        difficulty: session.difficulty,
+        tags: session.tags,
+        created_at: session.created_at,
+        user: {
+          username: session.user?.username,
+          avatar_url: session.user?.avatar_url,
+          cooking_level: session.user?.cooking_level
+        },
+        likesCount: likesCount || 0,
+        commentsCount: comments?.length || 0,
+        isLiked,
+        isSaved,
+        comments: comments || [],
+        timeAgo: formatTimeAgo(session.created_at)
       }
     } catch (error) {
       console.error('Erreur récupération session:', error)
@@ -157,33 +215,12 @@ export const sessionsService = {
   // Liker/Unliker une session
   async toggleLike(sessionId, userId) {
     try {
-      // Vérifier si déjà liké
-      const { data: existingLike } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('session_id', sessionId)
-        .eq('user_id', userId)
-        .single()
-
-      if (existingLike) {
-        // Unlike
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('session_id', sessionId)
-          .eq('user_id', userId)
-        
-        if (error) throw error
-        return { liked: false }
-      } else {
-        // Like
-        const { error } = await supabase
-          .from('likes')
-          .insert([{ session_id: sessionId, user_id: userId }])
-        
-        if (error) throw error
-        return { liked: true }
-      }
+      const { data, error } = await supabase.rpc('toggle_like', { 
+        p_session_id: sessionId, 
+        p_user_id: userId 
+      })
+      if (error) throw error
+      return data
     } catch (error) {
       console.error('Erreur toggle like:', error)
       throw error
@@ -193,30 +230,12 @@ export const sessionsService = {
   // Sauvegarder/Unsauvegarder une session
   async toggleSave(sessionId, userId) {
     try {
-      const { data: existingSave } = await supabase
-        .from('saved_sessions')
-        .select('id')
-        .eq('session_id', sessionId)
-        .eq('user_id', userId)
-        .single()
-
-      if (existingSave) {
-        const { error } = await supabase
-          .from('saved_sessions')
-          .delete()
-          .eq('session_id', sessionId)
-          .eq('user_id', userId)
-        
-        if (error) throw error
-        return { saved: false }
-      } else {
-        const { error } = await supabase
-          .from('saved_sessions')
-          .insert([{ session_id: sessionId, user_id: userId }])
-        
-        if (error) throw error
-        return { saved: true }
-      }
+      const { data, error } = await supabase.rpc('toggle_save', { 
+        p_session_id: sessionId, 
+        p_user_id: userId 
+      })
+      if (error) throw error
+      return data
     } catch (error) {
       console.error('Erreur toggle save:', error)
       throw error
@@ -244,6 +263,36 @@ export const sessionsService = {
       return data
     } catch (error) {
       console.error('Erreur ajout commentaire:', error)
+      throw error
+    }
+  },
+
+  // Supprimer un commentaire
+  async deleteComment(commentId, userId) {
+    try {
+      // Vérifier que l'utilisateur est le propriétaire du commentaire
+      const { data: comment, error: fetchError } = await supabase
+        .from('comments')
+        .select('user_id')
+        .eq('id', commentId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      if (comment.user_id !== userId) {
+        throw new Error('Vous ne pouvez supprimer que vos propres commentaires')
+      }
+
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+
+      if (error) throw error
+      
+      return { success: true }
+    } catch (error) {
+      console.error('Erreur suppression commentaire:', error)
       throw error
     }
   }
