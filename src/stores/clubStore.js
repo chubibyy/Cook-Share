@@ -94,8 +94,18 @@ export const useClubStore = create((set, get) => ({
       await clubsService.leaveClub(clubId, userId)
       const { clubs, currentClub } = get()
       set({
-        clubs: clubs.map((c) => (c.id === clubId ? { ...c, userMembership: null, membersCount: Math.max(0, (c.membersCount || 0) - 1) } : c)),
-        currentClub: currentClub?.id === clubId ? { ...currentClub, userMembership: null, membersCount: Math.max(0, (currentClub.membersCount || 0) - 1) } : currentClub,
+        clubs: clubs.map((c) => (c.id === clubId ? { 
+          ...c, 
+          userMembership: null, 
+          userJoinRequest: null, // Nettoyer aussi les demandes d'adhésion
+          membersCount: Math.max(0, (c.membersCount || 0) - 1) 
+        } : c)),
+        currentClub: currentClub?.id === clubId ? { 
+          ...currentClub, 
+          userMembership: null, 
+          userJoinRequest: null, // Nettoyer aussi les demandes d'adhésion
+          membersCount: Math.max(0, (currentClub.membersCount || 0) - 1) 
+        } : currentClub,
       })
       return { success: true }
     } catch (err) {

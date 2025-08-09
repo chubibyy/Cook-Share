@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, RefreshControl } from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, RefreshControl, Modal } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useFocusEffect } from '@react-navigation/native'
 import { useClubStore } from '../../stores/clubStore'
@@ -27,6 +27,7 @@ export const ClubDetailScreen = ({ navigation }) => {
     unsubscribeFromChat,
     deleteClub,
     checkJoinRequestStatus,
+    loadJoinRequests,
   } = useClubStore()
 
   const { toggleLike, toggleSave } = useSessionStore()
@@ -35,6 +36,8 @@ export const ClubDetailScreen = ({ navigation }) => {
   const [joinRequestStatus, setJoinRequestStatus] = useState(null)
   const [message, setMessage] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [showOwnerMenu, setShowOwnerMenu] = useState(false)
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
 
   useEffect(() => {
     loadClubById(clubId)
@@ -47,6 +50,17 @@ export const ClubDetailScreen = ({ navigation }) => {
       checkJoinRequestStatus(clubId).then(setJoinRequestStatus)
     }
   }, [currentClub, clubId, checkJoinRequestStatus])
+
+  useEffect(() => {
+    // Charger le nombre de demandes en attente si l'utilisateur est propriétaire d'un club privé
+    if (currentClub?.userMembership?.role === 'owner' && currentClub?.is_private) {
+      loadJoinRequests(clubId).then(requests => {
+        setPendingRequestsCount(requests?.length || 0)
+      }).catch(() => {
+        setPendingRequestsCount(0)
+      })
+    }
+  }, [currentClub, clubId, loadJoinRequests])
 
   // Recharger les données quand l'écran reçoit le focus (retour depuis SessionDetail)
   useFocusEffect(
@@ -79,10 +93,21 @@ export const ClubDetailScreen = ({ navigation }) => {
   }
 
   const handleViewRequests = () => {
+    setShowOwnerMenu(false)
     navigation.navigate('JoinRequests', { 
       clubId, 
       clubName: currentClub?.name 
     })
+  }
+
+  const handleEditFromMenu = () => {
+    setShowOwnerMenu(false)
+    handleEditClub()
+  }
+
+  const handleDeleteFromMenu = () => {
+    setShowOwnerMenu(false)
+    handleDeleteClub()
   }
 
   const handleDeleteClub = () => {
@@ -212,6 +237,53 @@ export const ClubDetailScreen = ({ navigation }) => {
     </View>
   )
 
+  const renderOwnerMenu = () => (
+    <Modal
+      visible={showOwnerMenu}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowOwnerMenu(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay} 
+        activeOpacity={1} 
+        onPress={() => setShowOwnerMenu(false)}
+      >
+        <View style={styles.menuContainer}>
+          <Text style={styles.menuTitle}>Actions du propriétaire</Text>
+          
+          <TouchableOpacity style={styles.menuItem} onPress={handleEditFromMenu}>
+            <Text style={styles.menuIcon}>✏️</Text>
+            <Text style={styles.menuText}>Éditer le club</Text>
+          </TouchableOpacity>
+          
+          {currentClub?.is_private && (
+            <TouchableOpacity style={styles.menuItem} onPress={handleViewRequests}>
+              <View style={styles.menuIconContainer}>
+                <Text style={styles.menuIcon}>📋</Text>
+                {pendingRequestsCount > 0 && (
+                  <View style={styles.requestsBadge}>
+                    <Text style={styles.requestsBadgeText}>{pendingRequestsCount}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.menuText}>
+                Demandes d'adhésion {pendingRequestsCount > 0 && `(${pendingRequestsCount})`}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+          <View style={styles.menuDivider} />
+          
+          <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleDeleteFromMenu}>
+            <Text style={styles.menuIcon}>🗑️</Text>
+            <Text style={[styles.menuText, styles.dangerText]}>Supprimer le club</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -233,32 +305,32 @@ export const ClubDetailScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.headerActions}>
-            {/* Bouton Éditer pour admin/owner */}
-            {(currentClub?.userMembership?.role === 'admin' || currentClub?.userMembership?.role === 'owner') && (
-              <TouchableOpacity onPress={handleEditClub} style={styles.editButton}>
-                <Text style={styles.editIcon}>✏️</Text>
-                <Text style={styles.editText}>Éditer</Text>
-              </TouchableOpacity>
-            )}
-            
-            {/* Bouton Demandes pour owner de club privé */}
-            {currentClub?.userMembership?.role === 'owner' && currentClub?.is_private && (
-              <TouchableOpacity onPress={handleViewRequests} style={styles.requestsButton}>
-                <Text style={styles.requestsIcon}>📋</Text>
-                <Text style={styles.requestsText}>Demandes</Text>
+            {/* Indicateur de demandes pour owner de club privé */}
+            {currentClub?.userMembership?.role === 'owner' && currentClub?.is_private && pendingRequestsCount > 0 && (
+              <TouchableOpacity onPress={handleViewRequests} style={styles.requestsIndicator}>
+                <View style={styles.requestsBadge}>
+                  <Text style={styles.requestsBadgeText}>{pendingRequestsCount}</Text>
+                </View>
+                <Text style={styles.requestsIndicatorText}>Demandes</Text>
               </TouchableOpacity>
             )}
 
-            {/* Bouton Supprimer pour owner seulement */}
+            {/* Bouton Options pour owner */}
             {currentClub?.userMembership?.role === 'owner' && (
-              <TouchableOpacity onPress={handleDeleteClub} style={styles.deleteButton}>
-                <Text style={styles.deleteIcon}>🗑️</Text>
-                <Text style={styles.deleteText}>Supprimer</Text>
+              <TouchableOpacity onPress={() => setShowOwnerMenu(true)} style={styles.optionsButton}>
+                <Text style={styles.optionsIcon}>⚙️</Text>
               </TouchableOpacity>
             )}
             
-            {/* Bouton Rejoindre/Quitter pour les membres non-owner */}
-            {currentClub?.userMembership?.role !== 'owner' && (
+            {/* Bouton Éditer pour admin */}
+            {currentClub?.userMembership?.role === 'admin' && (
+              <TouchableOpacity onPress={handleEditClub} style={styles.editButton}>
+                <Text style={styles.editIcon}>✏️</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Bouton Rejoindre/Quitter pour les membres non-owner/admin */}
+            {!['owner', 'admin'].includes(currentClub?.userMembership?.role) && (
               <TouchableOpacity onPress={handleToggleMembership} style={styles.membershipButton}>
                 <Text style={[
                   styles.membershipText,
@@ -280,11 +352,24 @@ export const ClubDetailScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Afficher l'état de demande en attente si applicable */}
-        {currentClub?.is_private && !currentClub?.userMembership && joinRequestStatus?.status === 'pending' ? (
-          renderPendingRequestState()
-        ) : currentClub?.is_private && !currentClub?.userMembership && joinRequestStatus?.status === 'rejected' ? (
-          renderRejectedState()
+        {/* Afficher l'état approprié selon le statut de l'utilisateur */}
+        {currentClub?.is_private && !currentClub?.userMembership ? (
+          joinRequestStatus?.status === 'pending' ? (
+            renderPendingRequestState()
+          ) : joinRequestStatus?.status === 'rejected' ? (
+            renderRejectedState()
+          ) : (
+            // Utilisateur n'est pas membre et n'a pas de demande : afficher un écran "rejoindre d'abord"
+            <View style={styles.pendingContainer}>
+              <View style={styles.pendingContent}>
+                <Text style={styles.pendingIcon}>🔒</Text>
+                <Text style={styles.pendingTitle}>Club privé</Text>
+                <Text style={styles.pendingMessage}>
+                  Ce club est privé. Vous devez faire une demande d'adhésion depuis la liste des clubs pour pouvoir y accéder.
+                </Text>
+              </View>
+            </View>
+          )
         ) : tab === 'feed' ? (
           <FlatList
             data={clubFeed}
@@ -318,6 +403,7 @@ export const ClubDetailScreen = ({ navigation }) => {
           </View>
         )}
       </KeyboardAvoidingView>
+      {renderOwnerMenu()}
     </SafeAreaView>
   )
 }
@@ -372,59 +458,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm
   },
-  editButton: {
-    flexDirection: 'row',
+  optionsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.sm,
+  },
+  optionsIcon: {
+    fontSize: 18,
+    color: COLORS.primary,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.base,
-    ...SHADOWS.small
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.sm,
   },
   editIcon: {
     fontSize: 16,
-    marginRight: SPACING.xs
-  },
-  editText: {
     color: COLORS.white,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold
   },
-  deleteButton: {
-    flexDirection: 'row',
+  requestsIndicator: {
     alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  requestsIndicatorText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+    marginTop: SPACING.xs,
+  },
+  requestsBadge: {
     backgroundColor: COLORS.error,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.base,
-    ...SHADOWS.small
-  },
-  deleteIcon: {
-    fontSize: 16,
-    marginRight: SPACING.xs
-  },
-  deleteText: {
-    color: COLORS.white,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold
-  },
-  requestsButton: {
-    flexDirection: 'row',
+    borderRadius: RADIUS.full,
+    minWidth: 20,
+    height: 20,
     alignItems: 'center',
-    backgroundColor: COLORS.info,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.base,
-    ...SHADOWS.small
+    justifyContent: 'center',
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    zIndex: 1,
   },
-  requestsIcon: {
-    fontSize: 16,
-    marginRight: SPACING.xs
-  },
-  requestsText: {
+  requestsBadgeText: {
     color: COLORS.white,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.weights.bold,
   },
   membershipButton: {
     backgroundColor: COLORS.backgroundSecondary,
@@ -513,6 +598,62 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  // Styles pour le modal du menu propriétaire
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  menuContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    width: '100%',
+    maxWidth: 320,
+    ...SHADOWS.lg,
+  },
+  menuTitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.base,
+    marginBottom: SPACING.xs,
+  },
+  menuIconContainer: {
+    position: 'relative',
+    marginRight: SPACING.md,
+  },
+  menuIcon: {
+    fontSize: 18,
+    width: 24,
+    textAlign: 'center',
+  },
+  menuText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.text,
+    flex: 1,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.md,
+  },
+  dangerItem: {
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+  },
+  dangerText: {
+    color: COLORS.error,
   },
 })
 

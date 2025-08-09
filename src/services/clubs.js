@@ -331,6 +331,7 @@ export const clubsService = {
   // Quitter un club
   async leaveClub(clubId, userId) {
     try {
+      // Supprimer l'utilisateur des membres du club
       const { error } = await supabase
         .from('club_members')
         .delete()
@@ -338,6 +339,14 @@ export const clubsService = {
         .eq('user_id', userId)
 
       if (error) throw error
+
+      // Nettoyer aussi les anciennes demandes d'adhésion pour éviter les conflits
+      await supabase
+        .from('club_join_requests')
+        .delete()
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+
       return true
     } catch (error) {
       console.error('Erreur quitter club:', error)
@@ -402,12 +411,13 @@ export const clubsService = {
   // Demander à rejoindre un club privé
   async requestToJoin(clubId, userId) {
     try {
-      // Vérifier si une demande existe déjà
+      // Vérifier si une demande en attente existe déjà
       const { data: existingRequest, error: checkError } = await supabase
         .from('club_join_requests')
         .select('*')
         .eq('club_id', clubId)
         .eq('user_id', userId)
+        .eq('status', 'pending')
         .single()
 
       if (checkError && checkError.code !== 'PGRST116') throw checkError
@@ -529,11 +539,15 @@ export const clubsService = {
   // Vérifier le statut d'une demande d'adhésion
   async getJoinRequestStatus(clubId, userId) {
     try {
+      // Récupérer seulement les demandes en attente ou récemment refusées (moins de 24h)
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      
       const { data, error } = await supabase
         .from('club_join_requests')
-        .select('status, requested_at')
+        .select('status, requested_at, responded_at')
         .eq('club_id', clubId)
         .eq('user_id', userId)
+        .or(`status.eq.pending,and(status.eq.rejected,responded_at.gte.${oneDayAgo})`)
         .order('requested_at', { ascending: false })
         .limit(1)
 

@@ -45,20 +45,28 @@ const ClubCard = ({
     if (club.userMembership?.role === 'owner') return 'Propriétaire'
     if (isMember) return 'Quitter'
     if (isPrivate) {
-      if (requestStatus?.status === 'pending') return 'En attente...'
+      if (requestStatus?.status === 'pending') return '✓ Demandé'
       if (requestStatus?.status === 'rejected') return 'Refusé'
       return 'Demander'
     }
     return 'Rejoindre'
   }
 
-  const handleActionPress = () => {
+  const handleActionPress = async () => {
     if (club.userMembership?.role === 'owner') return
     if (isMember) {
       onLeave?.(club.id)
     } else if (isPrivate) {
       if (requestStatus?.status === 'pending' || requestStatus?.status === 'rejected') return
-      onRequestJoin?.(club.id)
+      
+      // Mettre à jour l'état local immédiatement pour le feedback UX
+      setRequestStatus({ 
+        status: 'pending', 
+        requested_at: new Date().toISOString() 
+      })
+      
+      // Puis appeler la fonction de demande
+      await onRequestJoin?.(club.id)
     } else {
       onJoin?.(club.id)
     }
@@ -213,10 +221,12 @@ const ClubCard = ({
           {/* Bouton d'action */}
           <Button
             title={getJoinButtonText()}
-            variant={isMember ? "outline" : "primary"}
+            variant={isMember ? "outline" : 
+                     (isPrivate && requestStatus?.status === 'pending') ? "success" : "primary"}
             size="small"
             onPress={handleActionPress}
-            disabled={club.userMembership?.role === 'owner'}
+            disabled={club.userMembership?.role === 'owner' || 
+                      (isPrivate && (requestStatus?.status === 'pending' || requestStatus?.status === 'rejected'))}
             style={styles.actionButton}
           />
         </View>
