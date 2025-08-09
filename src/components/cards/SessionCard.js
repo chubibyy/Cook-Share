@@ -142,19 +142,19 @@ const SessionCard = ({
       <View style={styles.content}>
         {/* Header avec utilisateur */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.userInfo}
             onPress={() => onUserPress?.(session)}
           >
-            <Avatar 
-              source={{ uri: session.user.avatar_url }}
+            <Avatar
+              source={session.user?.avatar_url ? { uri: session.user.avatar_url } : undefined}
               size="small"
-              name={session.user.username}
-              xp={session.user.xp}
+              name={session.user?.username || 'Utilisateur inconnu'}
+              xp={session.user?.xp || 0}
               showBadge={true}
             />
             <View style={styles.userDetails}>
-              <Text style={styles.username}>{session.user.username}</Text>
+              <Text style={styles.username}>{session.user?.username || 'Utilisateur inconnu'}</Text>
               <Text style={styles.timeAgo}>{session.timeAgo}</Text>
             </View>
           </TouchableOpacity>
