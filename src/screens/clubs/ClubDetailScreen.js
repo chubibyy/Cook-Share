@@ -47,24 +47,10 @@ export const ClubDetailScreen = ({ navigation }) => {
   useEffect(() => {
     console.log('🏠 [SCREEN] Montage du ClubDetailScreen pour clubId:', clubId)
     loadClubById(clubId)
-    loadClubFeed(clubId, true)
-  }, [clubId, loadClubById, loadClubFeed])
-
-  // Recharger automatiquement quand on change d'onglet vers Feed
-  useEffect(() => {
     if (tab === 'feed') {
-      console.log('📋 [SCREEN] Onglet FEED actif - rechargement du feed')
       loadClubFeed(clubId, true)
     }
-  }, [tab, clubId, loadClubFeed])
-
-  // Charger le feed dès que currentClub est disponible
-  useEffect(() => {
-    if (currentClub && tab === 'feed') {
-      console.log('🏗️ [SCREEN] Club chargé et tab Feed - chargement initial du feed')
-      loadClubFeed(clubId, true)
-    }
-  }, [currentClub, tab, clubId, loadClubFeed])
+  }, [clubId]) // Retiré les dépendances pour éviter les re-renders
 
   useEffect(() => {
     // Vérifier le statut de demande d'adhésion si l'utilisateur n'est pas membre d'un club privé
@@ -84,17 +70,20 @@ export const ClubDetailScreen = ({ navigation }) => {
     }
   }, [currentClub, clubId, loadJoinRequests])
 
-  // Recharger les données quand l'écran reçoit le focus (retour depuis SessionDetail)
+  // Recharger SEULEMENT les données de l'onglet actuel quand on revient sur l'écran
   useFocusEffect(
     useCallback(() => {
-      console.log('👀 [FOCUS] Écran reçoit le focus, tab actuel:', tab)
-      // Toujours recharger le club et le feed au focus
-      loadClubById(clubId)
+      console.log('🏛️ [FOCUS] ClubDetailScreen reçoit le focus - refresh optimisé')
+      
+      // Refresh seulement si on vient d'un autre écran (pas d'un changement d'onglet interne)
       if (tab === 'feed') {
-        console.log('👀 [FOCUS] Rechargement du feed car onglet Feed actif')
+        console.log('📋 [FOCUS] Refresh du feed seulement')
         loadClubFeed(clubId, true)
+      } else if (tab === 'chat' && isMember) {
+        console.log('💬 [FOCUS] Refresh du chat seulement')
+        loadChatMessages(clubId)
       }
-    }, [tab, clubId, loadClubById, loadClubFeed])
+    }, [clubId]) // Retiré tab, isMember, currentClub pour éviter les refresh excessifs
   )
 
   // Gérer la subscription du chat pour les membres
@@ -118,17 +107,21 @@ export const ClubDetailScreen = ({ navigation }) => {
     }
   }, [clubId, isMember, currentClub, subscribeToChat, unsubscribeFromChat])
 
-  // Charger les messages et gérer le polling quand on change d'onglet
+  // Gérer seulement le changement d'onglet (pas de refresh excessif)
   useEffect(() => {
     if (tab === 'chat' && isMember) {
-      console.log('📱 [SCREEN] Onglet CHAT actif - chargement messages et démarrage polling')
-      loadChatMessages(clubId)
-      startChatPolling(clubId) // Démarrer le polling quand on va sur Chat
+      console.log('📱 [SCREEN] Changement vers onglet CHAT - setup polling uniquement')
+      // Charger les messages seulement si on change d'onglet, pas à chaque render
+      const currentMessages = chatMessages.length
+      if (currentMessages === 0) {
+        loadChatMessages(clubId) // Charger seulement si pas de messages
+      }
+      startChatPolling(clubId)
     } else {
-      console.log('📱 [SCREEN] Onglet FEED ou pas membre - arrêt complet du polling')
-      stopChatPolling() // Arrêter complètement le polling
+      console.log('📱 [SCREEN] Changement vers onglet FEED - arrêt polling')
+      stopChatPolling()
     }
-  }, [tab, clubId, isMember, loadChatMessages, startChatPolling, stopChatPolling])
+  }, [tab]) // Seulement tab, pas les autres dépendances
 
   // Cleanup général seulement quand on quitte complètement le composant
   useEffect(() => {

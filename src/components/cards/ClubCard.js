@@ -171,7 +171,7 @@ const ClubCard = ({
             </Text>
             <Text style={styles.clubStatSeparator}>•</Text>
             <Text style={styles.clubStatText}>
-              📅 {club.sessionsCount || 0} sessions
+              🍳 {club.sessionsCount || 0} Posts culinaires
             </Text>
           </View>
         </View>

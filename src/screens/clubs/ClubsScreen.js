@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useClubStore } from '../../stores/clubStore'
@@ -16,6 +17,14 @@ export const ClubsScreen = ({ navigation }) => {
   useEffect(() => {
     loadClubs()
   }, [loadClubs])
+
+  // Refresh automatique à chaque fois que l'écran reçoit le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🏛️ [FOCUS] ClubsScreen reçoit le focus - refresh automatique')
+      loadClubs()
+    }, [loadClubs])
+  )
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)

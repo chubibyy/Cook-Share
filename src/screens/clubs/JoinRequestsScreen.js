@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute } from '@react-navigation/native'
+import { useRoute, useFocusEffect } from '@react-navigation/native'
 import { useClubStore } from '../../stores/clubStore'
 import { Avatar } from '../../components/common'
 import Button from '../../components/common/Button'
@@ -16,6 +16,14 @@ export const JoinRequestsScreen = ({ navigation }) => {
   useEffect(() => {
     loadJoinRequests(clubId)
   }, [clubId, loadJoinRequests])
+
+  // Refresh automatique à chaque fois que l'écran reçoit le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📋 [FOCUS] JoinRequestsScreen reçoit le focus - refresh automatique')
+      loadJoinRequests(clubId)
+    }, [clubId, loadJoinRequests])
+  )
 
   const onRefresh = async () => {
     setRefreshing(true)

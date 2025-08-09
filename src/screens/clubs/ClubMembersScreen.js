@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute } from '@react-navigation/native'
+import { useRoute, useFocusEffect } from '@react-navigation/native'
 import { useClubStore } from '../../stores/clubStore'
 import { Avatar, Button } from '../../components/common'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
@@ -20,6 +20,14 @@ export const ClubMembersScreen = ({ navigation }) => {
   useEffect(() => {
     loadClubMembers(clubId)
   }, [clubId, loadClubMembers])
+
+  // Refresh automatique à chaque fois que l'écran reçoit le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('👥 [FOCUS] ClubMembersScreen reçoit le focus - refresh automatique')
+      loadClubMembers(clubId)
+    }, [clubId, loadClubMembers])
+  )
 
   const handleRefresh = async () => {
     setRefreshing(true)

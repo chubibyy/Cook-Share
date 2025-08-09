@@ -1,5 +1,6 @@
 // src/screens/profile/ProfileScreen.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -34,6 +35,16 @@ export const ProfileScreen = ({ navigation }) => {
       loadFeed(0, 50, user.id);
     }
   }, [user?.id, loadFeed]);
+
+  // Refresh automatique à chaque fois que l'écran reçoit le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('👤 [FOCUS] ProfileScreen reçoit le focus - refresh automatique')
+      if (user?.id) {
+        refresh()
+      }
+    }, [user?.id, refresh])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);

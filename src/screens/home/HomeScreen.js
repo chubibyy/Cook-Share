@@ -1,5 +1,6 @@
 // src/screens/home/HomeScreen.js
 import React, { useEffect, useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -37,6 +38,14 @@ export const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     loadFeed(true);
   }, [loadFeed]);
+
+  // Refresh automatique à chaque fois que l'écran reçoit le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🏠 [FOCUS] HomeScreen reçoit le focus - refresh automatique')
+      refresh()
+    }, [refresh])
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

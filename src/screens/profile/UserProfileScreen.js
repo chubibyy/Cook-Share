@@ -1,5 +1,6 @@
 // src/screens/profile/UserProfileScreen.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -38,6 +39,17 @@ export const UserProfileScreen = ({ route, navigation }) => {
       loadFeed(0, 50, userId);
     }
   }, [userId]);
+
+  // Refresh automatique à chaque fois que l'écran reçoit le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('👤 [FOCUS] UserProfileScreen reçoit le focus - refresh automatique')
+      if (userId) {
+        refresh()
+        loadUserProfile()
+      }
+    }, [userId, refresh])
+  );
 
   const loadUserProfile = async () => {
     // This would typically come from a user service

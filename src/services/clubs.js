@@ -12,7 +12,7 @@ export const clubsService = {
         .select(`
           *,
           members_count:club_members(count),
-          sessions_count:cooking_sessions(count),
+          sessions_count:club_sessions(count),
           user_membership:club_members(*),
           recent_members:club_members(
             user:users(id, username, avatar_url)
@@ -28,13 +28,21 @@ export const clubsService = {
       const { data, error } = await query
       if (error) throw error
 
-      return data?.map(club => ({
-        ...club,
-        membersCount: club.members_count?.[0]?.count || 0,
-        sessionsCount: club.sessions_count?.[0]?.count || 0,
-        userMembership: club.user_membership?.[0] || null,
-        recentMembers: club.recent_members?.slice(0, 3).map(m => m.user) || []
-      })) || []
+      const processedClubs = data?.map(club => {
+        const sessionsCount = club.sessions_count?.[0]?.count || 0
+        console.log('🏛️ [SERVICE] Club', club.name, '- Sessions count:', sessionsCount, 'Raw data:', club.sessions_count)
+        
+        return {
+          ...club,
+          membersCount: club.members_count?.[0]?.count || 0,
+          sessionsCount,
+          userMembership: club.user_membership?.[0] || null,
+          recentMembers: club.recent_members?.slice(0, 3).map(m => m.user) || []
+        }
+      }) || []
+      
+      console.log('🏛️ [SERVICE] Processed clubs:', processedClubs.map(c => ({ name: c.name, sessionsCount: c.sessionsCount })))
+      return processedClubs
     } catch (error) {
       console.error('Erreur récupération clubs:', error)
       throw error
@@ -188,7 +196,7 @@ export const clubsService = {
         .select(
           `*,
            members:club_members(*, user:users(*)),
-           sessions_count:cooking_sessions(count),
+           sessions_count:club_sessions(count),
            user_membership:club_members(*)
           `
         )
