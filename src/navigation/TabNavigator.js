@@ -100,15 +100,11 @@ const TabNavigator = () => {
 
   const tabScreenListeners = ({ navigation, route }) => ({
     tabPress: (e) => {
-      const state = navigation.getState();
-      const isFocused = state.routes[state.index].name === route.name;
-
-      if (isFocused) {
-        // If the tab is already focused, reset its stack to the initial route.
-        navigation.navigate(route.name, {
-          screen: `${route.name}Screen` // Assumes root screen is named like 'HomeScreen', 'ChallengesScreen'
-        });
-      }
+      // Always navigate to the root screen of the tab when its button is pressed
+      e.preventDefault();
+      navigation.navigate(route.name, {
+        screen: `${route.name}Screen`, // Assumes root screen names follow the pattern '<TabName>Screen'
+      });
     },
   });
 
