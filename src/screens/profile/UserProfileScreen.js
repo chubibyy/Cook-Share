@@ -19,7 +19,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { Header } from '../../components/layout/Header';
 import { SessionCard } from '../../components/cards/SessionCard';
 import { Avatar, Button } from '../../components/common';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, getLevelFromXP } from '../../utils/constants';
 
 export const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
@@ -128,6 +128,7 @@ export const UserProfileScreen = ({ route, navigation }) => {
 
   // Get user info from first session if available
   const displayUser = userSessions.length > 0 ? userSessions[0].user : null;
+  const displayLevel = displayUser ? getLevelFromXP(displayUser.xp || 0) : null;
 
   if (userLoading) {
     return (
@@ -166,13 +167,14 @@ export const UserProfileScreen = ({ route, navigation }) => {
                 source={{ uri: displayUser?.avatar_url }}
                 size="large"
                 name={displayUser?.username || 'Utilisateur'}
+                xp={displayUser?.xp || 0}
               />
               <View style={styles.userInfo}>
                 <Text style={styles.username}>
                   {displayUser?.username || 'Nom d\'utilisateur'}
                 </Text>
                 <Text style={styles.cookingLevel}>
-                  Niveau: {displayUser?.cooking_level || 'Non d�fini'}
+                  Niveau: {displayLevel?.name || 'Non défini'}
                 </Text>
               </View>
             </View>

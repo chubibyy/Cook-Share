@@ -244,7 +244,7 @@ export const clubsService = {
         .from('cooking_sessions')
         .select(`
           *,
-          user:users(username, avatar_url, cooking_level)
+          user:users(username, avatar_url, xp, cooking_level)
         `)
         .in('id', sessionIds)
 
@@ -314,7 +314,8 @@ export const clubsService = {
           user: {
             username: session.user?.username,
             avatar_url: session.user?.avatar_url,
-            cooking_level: session.user?.cooking_level
+            cooking_level: session.user?.cooking_level,
+            xp: session.user?.xp
           },
           likesCount: likeCountMap[session.id] || 0,
           commentsCount: commentCountMap[session.id] || 0,
