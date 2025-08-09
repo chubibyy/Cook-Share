@@ -1,10 +1,10 @@
 // src/components/cards/UserCard.js - Version corrigée
 import React from 'react'
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet
 } from 'react-native'
 import { Avatar, Badge, Button } from '../common'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, getLevelFromXP } from '../../utils/constants'
@@ -21,15 +21,17 @@ const UserCard = ({
   style,
   ...props
 }) => {
-  const isFollowing = user.isFollowing
-  const userLevel = getLevelFromXP(user.xp || 0)
-  
+  if (!user) return null
+
+  const isFollowing = user?.isFollowing
+  const userLevel = getLevelFromXP(user?.xp || 0)
+
   const handleFollowPress = () => {
-    onFollow?.(user.id, !isFollowing)
+    onFollow?.(user?.id, !isFollowing)
   }
 
   const handleMessagePress = () => {
-    onMessage?.(user.id)
+    onMessage?.(user?.id)
   }
 
   // Version compacte (pour les listes)
@@ -41,20 +43,20 @@ const UserCard = ({
         {...props}
       >
         <Avatar
-          source={{ uri: user.avatar_url }}
-          name={user.username}
+          source={{ uri: user?.avatar_url }}
+          name={user?.username}
           size="medium"
-          xp={user.xp}
+          xp={user?.xp}
           showBadge={true}
         />
         
         <View style={styles.userInfoCompact}>
           <Text style={styles.usernameCompact} numberOfLines={1}>
-            {user.username}
+            {user?.username}
           </Text>
-          {user.bio && (
+          {user?.bio && (
             <Text style={styles.bioCompact} numberOfLines={1}>
-              {user.bio}
+              {user?.bio}
             </Text>
           )}
           <Text style={styles.levelCompact}>
@@ -85,19 +87,19 @@ const UserCard = ({
       {/* Header avec avatar et infos principales */}
       <View style={styles.userHeader}>
         <Avatar
-          source={{ uri: user.avatar_url }}
-          name={user.username}
+          source={{ uri: user?.avatar_url }}
+          name={user?.username}
           size="large"
-          xp={user.xp}
+          xp={user?.xp}
           showBadge={true}
         />
         
         <View style={styles.userMainInfo}>
           <View style={styles.userNameRow}>
             <Text style={styles.username} numberOfLines={1}>
-              {user.username}
+              {user?.username}
             </Text>
-            {user.isVerified && (
+            {user?.isVerified && (
               <Text style={styles.verifiedBadge}>✓</Text>
             )}
           </View>
@@ -109,13 +111,13 @@ const UserCard = ({
               variant="secondary"
               size="small"
             />
-            <Text style={styles.xpText}>{user.xp || 0} XP</Text>
+            <Text style={styles.xpText}>{user?.xp || 0} XP</Text>
           </View>
           
           {/* Bio */}
-          {user.bio && (
+          {user?.bio && (
             <Text style={styles.bio} numberOfLines={2}>
-              {user.bio}
+              {user?.bio}
             </Text>
           )}
         </View>
@@ -125,20 +127,20 @@ const UserCard = ({
       {showStats && (
         <View style={styles.userStats}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{user.sessionsCount || 0}</Text>
+            <Text style={styles.statNumber}>{user?.sessionsCount || 0}</Text>
             <Text style={styles.statLabel}>Sessions</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{user.followersCount || 0}</Text>
+            <Text style={styles.statNumber}>{user?.followersCount || 0}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{user.challengesCompleted || 0}</Text>
+            <Text style={styles.statNumber}>{user?.challengesCompleted || 0}</Text>
             <Text style={styles.statLabel}>Défis</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>
-              {Math.floor((user.xp || 0) / 100)}
+              {Math.floor((user?.xp || 0) / 100)}
             </Text>
             <Text style={styles.statLabel}>Niveau</Text>
           </View>
@@ -146,21 +148,21 @@ const UserCard = ({
       )}
       
       {/* Contraintes/Préférences culinaires */}
-      {user.cookConstraints?.length > 0 && (
+      {user?.cookConstraints?.length > 0 && (
         <View style={styles.constraintsContainer}>
           <Text style={styles.constraintsLabel}>Préférences :</Text>
           <View style={styles.constraintsTags}>
-            {user.cookConstraints.slice(0, 3).map((constraint, index) => (
-              <Badge 
+            {user?.cookConstraints?.slice(0, 3).map((constraint, index) => (
+              <Badge
                 key={index}
-                text={constraint} 
-                variant="info" 
-                size="small" 
+                text={constraint}
+                variant="info"
+                size="small"
               />
             ))}
-            {user.cookConstraints.length > 3 && (
+            {user?.cookConstraints?.length > 3 && (
               <Text style={styles.moreConstraints}>
-                +{user.cookConstraints.length - 3}
+                +{user?.cookConstraints?.length - 3}
               </Text>
             )}
           </View>
