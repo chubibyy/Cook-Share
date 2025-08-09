@@ -18,6 +18,7 @@ import JoinRequestsScreen from '../screens/clubs/JoinRequestsScreen';
 import ClubMembersScreen from '../screens/clubs/ClubMembersScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { UserProfileScreen } from '../screens/profile/UserProfileScreen';
+import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { COLORS, SPACING, SHADOWS } from '../utils/constants';
 import { useNotificationStore } from '../stores/notificationStore';
 
@@ -88,6 +89,7 @@ const ProfileStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
     <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
+    <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
   </Stack.Navigator>
 );
 

@@ -156,10 +156,7 @@ export const useAuthStore = create(
           // Mise à jour en base
           const { error } = await supabase
             .from('users')
-            .update({
-              ...profileData,
-              updated_at: new Date().toISOString() // si la colonne n'existe pas, retire cette ligne
-            })
+            .update(profileData)
             .eq('id', user.id)
 
           if (error) throw error
