@@ -9,13 +9,16 @@ import {
   Alert,
   RefreshControl,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { useChallengeStore } from '../../stores/challengeStore';
 import { usersService } from '../../services/users';
 import { supabase } from '../../services/supabase';
+import { sessionsService } from '../../services/session';
+import { useUserStore } from '../../stores/userStore';
 import { SessionCard } from '../../components/cards/SessionCard';
 import { Avatar, Button } from '../../components/common';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants';
@@ -34,12 +37,32 @@ export const ProfileScreen = ({ navigation }) => {
       return;
     }
     try {
-      const { data: sessionsData } = await supabase
-        .from('cooking_sessions')
-        .select('*')
-        .eq('user_id', user.id);
-      // Ensure each session includes the current user
-      setSessions((sessionsData || []).map((s) => ({ ...s, user })));
+      const userSessions = await useUserStore.getState().getUserSessions(user.id, 0, 50);
+      const sessionIds = userSessions.map(s => s.id);
+
+      // Récupérer les likes et sauvegardes de l'utilisateur pour ces sessions
+      const { data: likesData } = await supabase
+        .from('likes')
+        .select('session_id')
+        .eq('user_id', user.id)
+        .in('session_id', sessionIds);
+
+      const { data: savesData } = await supabase
+        .from('saved_sessions')
+        .select('session_id')
+        .eq('user_id', user.id)
+        .in('session_id', sessionIds);
+
+      const userLikes = likesData?.map(l => l.session_id) || [];
+      const userSaves = savesData?.map(s => s.session_id) || [];
+
+      setSessions(userSessions.map(s => ({
+        ...s,
+        user,
+        isLiked: userLikes.includes(s.id),
+        isSaved: userSaves.includes(s.id)
+      })));
+
       const userBadges = await usersService.getUserBadges(user.id);
       setBadges(userBadges);
       await loadUserStats(user.id);
@@ -76,8 +99,80 @@ export const ProfileScreen = ({ navigation }) => {
     ]);
   };
 
+  const handleSessionPress = (session) => {
+    navigation.navigate('SessionDetail', { sessionId: session.id });
+  };
+
+  const handleLike = async (sessionId) => {
+    setSessions(prev =>
+      prev.map(s =>
+        s.id === sessionId
+          ? { ...s, isLiked: !s.isLiked, likesCount: s.likesCount + (s.isLiked ? -1 : 1) }
+          : s
+      )
+    );
+    try {
+      await sessionsService.toggleLike(sessionId, user.id);
+    } catch (error) {
+      // revert on error
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === sessionId
+            ? { ...s, isLiked: !s.isLiked, likesCount: s.likesCount + (s.isLiked ? -1 : 1) }
+            : s
+        )
+      );
+      Alert.alert('Erreur', "Impossible d'aimer la session.");
+    }
+  };
+
+  const handleSave = async (sessionId) => {
+    setSessions(prev =>
+      prev.map(s =>
+        s.id === sessionId ? { ...s, isSaved: !s.isSaved } : s
+      )
+    );
+    try {
+      await sessionsService.toggleSave(sessionId, user.id);
+    } catch (error) {
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === sessionId ? { ...s, isSaved: !s.isSaved } : s
+        )
+      );
+      Alert.alert('Erreur', 'Impossible de sauvegarder la session.');
+    }
+  };
+
+  const handleComment = (session) => {
+    navigation.navigate('SessionDetail', {
+      sessionId: session.id,
+      focusComment: true
+    });
+  };
+
+  const handleShare = async (sessionId) => {
+    if (!sessionId) return;
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    try {
+      await Share.share({
+        message: `Découvrez cette session de cuisine sur CookShare: ${session.title}\n#CookShareApp`,
+      });
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de partager la session.');
+    }
+  };
+
   const renderSessionItem = ({ item }) => (
-    <SessionCard session={item.user ? item : { ...item, user }} />
+    <SessionCard
+      session={item.user ? item : { ...item, user }}
+      onPress={() => handleSessionPress(item)}
+      onLike={handleLike}
+      onSave={handleSave}
+      onComment={handleComment}
+      onShare={handleShare}
+    />
   );
 
   const ChallengeStatsSection = () => (
