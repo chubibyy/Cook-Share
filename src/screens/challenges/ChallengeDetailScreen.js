@@ -221,7 +221,14 @@ const ChallengeDetailScreen = ({ navigation }) => {
           <Section title="👥 Participants" subtitle={`${participantsCount || 0} participant(s)`}>
             <View style={styles.participantsList}>
               {(participants_list || []).slice(0, 5).map(p => (
-                <Avatar key={p.user.id} source={{ uri: p.user.avatar_url }} name={p.user.username} size="medium" style={styles.participantAvatar} />
+                <Avatar
+                  key={p.user.id}
+                  source={{ uri: p.user.avatar_url }}
+                  name={p.user.username}
+                  size="medium"
+                  style={styles.participantAvatar}
+                  userId={p.user.id}
+                />
               ))}
               {(participants_list?.length || 0) > 5 && <Text style={styles.moreParticipants}>+{(participants_list.length || 0) - 5}</Text>}
             </View>

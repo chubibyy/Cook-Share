@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet
 } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import { Avatar, Badge, Button } from '../common'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, getLevelFromXP } from '../../utils/constants'
 
@@ -21,6 +22,7 @@ const UserCard = ({
   style,
   ...props
 }) => {
+  const navigation = useNavigation()
   if (!user) return null
 
   const isFollowing = user?.isFollowing
@@ -37,9 +39,12 @@ const UserCard = ({
   // Version compacte (pour les listes)
   if (variant === 'compact') {
     return (
-      <TouchableOpacity 
-        style={[styles.userCardCompact, style]} 
-        onPress={() => onPress?.(user)}
+      <TouchableOpacity
+        style={[styles.userCardCompact, style]}
+        onPress={() => {
+          if (onPress) onPress(user)
+          else navigation.navigate('UserProfileScreen', { userId: user.id })
+        }}
         {...props}
       >
         <Avatar
@@ -48,6 +53,7 @@ const UserCard = ({
           size="medium"
           xp={user?.xp}
           showBadge={true}
+          userId={user.id}
         />
         
         <View style={styles.userInfoCompact}>
@@ -78,9 +84,12 @@ const UserCard = ({
 
   // Version détaillée (pour les suggestions, recherche)
   return (
-    <TouchableOpacity 
-      style={[styles.userCard, style]} 
-      onPress={() => onPress?.(user)}
+    <TouchableOpacity
+      style={[styles.userCard, style]}
+      onPress={() => {
+        if (onPress) onPress(user)
+        else navigation.navigate('UserProfileScreen', { userId: user.id })
+      }}
       activeOpacity={0.9}
       {...props}
     >
@@ -92,6 +101,7 @@ const UserCard = ({
           size="large"
           xp={user?.xp}
           showBadge={true}
+          userId={user.id}
         />
         
         <View style={styles.userMainInfo}>
