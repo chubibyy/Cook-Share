@@ -336,100 +336,72 @@ export const challengesService = {
   // Récupérer les challenges des clubs de l'utilisateur
   async getClubChallenges(userId) {
     try {
-      // Récupérer seulement les challenges de club (is_club_challenge = true)
-      const { data: challenges, error } = await supabase
+      // 1. Récupérer les challenges de type "club"
+      const { data: challenges, error: challengesError } = await supabase
         .from('challenges')
         .select('*')
         .eq('is_club_challenge', true)
         .order('id', { ascending: false })
 
-      if (error) throw error
-
+      if (challengesError) throw challengesError
       if (!challenges || challenges.length === 0) return []
 
       const challengeIds = challenges.map(c => c.id)
 
-      // Récupérer les clubs de l'utilisateur où il est propriétaire
+      // 2. Récupérer les clubs que l'utilisateur possède
       const { data: userOwnedClubs, error: clubsError } = await supabase
         .from('club_members')
-        .select(`
-          club_id,
-          club:clubs(id, name, avatar_url)
-        `)
+        .select('club_id, club:clubs(id, name, avatar_url)')
         .eq('user_id', userId)
         .eq('role', 'owner')
 
       if (clubsError) throw clubsError
-
       const ownedClubIds = userOwnedClubs?.map(cm => cm.club_id) || []
+      const ownedClubs = userOwnedClubs?.map(cm => cm.club) || []
 
-      // Récupérer les participations des clubs aux challenges
-      let clubParticipations = []
-      if (challengeIds.length > 0 && ownedClubIds.length > 0) {
+      // 3. Récupérer les participations des clubs de l'utilisateur aux challenges
+      const userClubParticipationsMap = {}
+      if (ownedClubIds.length > 0) {
         const { data: participationsData, error: participationsError } = await supabase
           .from('club_challenges')
-          .select('*')
+          .select('*, club:clubs(id, name, avatar_url)') // Jointure pour avoir les détails du club
           .in('challenge_id', challengeIds)
           .in('club_id', ownedClubIds)
 
         if (participationsError) {
           console.warn('Erreur récupération participations clubs:', participationsError)
-        } else {
-          clubParticipations = participationsData || []
+        } else if (participationsData) {
+          participationsData.forEach(p => {
+            if (!p.club) return // Sécurité
+            if (!userClubParticipationsMap[p.challenge_id]) {
+              userClubParticipationsMap[p.challenge_id] = []
+            }
+            userClubParticipationsMap[p.challenge_id].push(p)
+          })
         }
       }
 
-      // Compter les participations pour chaque challenge
+      // 4. Compter le nombre total de participants pour chaque challenge
       const participantCounts = {}
-      if (challengeIds.length > 0) {
-        const { data: allClubParticipants, error: countError } = await supabase
-          .from('club_challenges')
-          .select('challenge_id')
-          .in('challenge_id', challengeIds)
+      const { data: allClubParticipants, error: countError } = await supabase
+        .from('club_challenges')
+        .select('challenge_id')
+        .in('challenge_id', challengeIds)
 
-        if (!countError && allClubParticipants) {
-          allClubParticipants.forEach(p => {
-            participantCounts[p.challenge_id] = (participantCounts[p.challenge_id] || 0) + 1
-          })
-        }
-      }
-
-      // Récupérer les informations des clubs participants
-      const participatingClubIds = [...new Set(clubParticipations.map(p => p.club_id))]
-      let participatingClubsMap = {}
-      
-      if (participatingClubIds.length > 0) {
-        const { data: participatingClubsData, error: participatingClubsError } = await supabase
-          .from('clubs')
-          .select('id, name, avatar_url')
-          .in('id', participatingClubIds)
-
-        if (!participatingClubsError && participatingClubsData) {
-          participatingClubsData.forEach(club => {
-            participatingClubsMap[club.id] = club
-          })
-        }
-      }
-
-      // Créer une map des participations par challenge avec infos clubs
-      const participationsMap = {}
-      clubParticipations.forEach(p => {
-        if (!participationsMap[p.challenge_id]) {
-          participationsMap[p.challenge_id] = []
-        }
-        participationsMap[p.challenge_id].push({
-          ...p,
-          club: participatingClubsMap[p.club_id] || null
+      if (!countError && allClubParticipants) {
+        allClubParticipants.forEach(p => {
+          participantCounts[p.challenge_id] = (participantCounts[p.challenge_id] || 0) + 1
         })
-      })
+      }
 
+      // 5. Combiner toutes les informations
       return challenges.map(challenge => ({
         ...challenge,
         participantsCount: participantCounts[challenge.id] || 0,
-        clubParticipations: participationsMap[challenge.id] || [],
+        clubParticipations: userClubParticipationsMap[challenge.id] || [],
         isActive: new Date(challenge.end_date) > new Date(),
         timeLeft: calculateTimeLeft(challenge.end_date),
-        ownedClubs: userOwnedClubs?.map(c => c.club) || []
+        ownedClubs: ownedClubs
       }))
     } catch (error) {
       console.error('Erreur récupération challenges clubs:', error)

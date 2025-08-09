@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Modal,
   View,
@@ -6,11 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Alert
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Avatar, Button, Badge } from '../common'
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
+import { Avatar, Badge } from '../common'
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../utils/constants'
 
 export const ClubSelectionModal = ({
   visible,
@@ -23,6 +22,12 @@ export const ClubSelectionModal = ({
 }) => {
   const [selectedClubs, setSelectedClubs] = useState(new Set())
 
+  useEffect(() => {
+    if (visible) {
+      setSelectedClubs(new Set(participatingClubIds))
+    }
+  }, [visible, participatingClubIds])
+
   const toggleClub = (clubId) => {
     const newSelection = new Set(selectedClubs)
     if (newSelection.has(clubId)) {
@@ -34,33 +39,24 @@ export const ClubSelectionModal = ({
   }
 
   const handleConfirm = () => {
-    if (selectedClubs.size === 0) {
-      return Alert.alert('Sélection requise', 'Veuillez sélectionner au moins un club')
-    }
-
     onSelectClubs(Array.from(selectedClubs))
-    setSelectedClubs(new Set())
     onClose()
   }
 
   const handleCancel = () => {
-    setSelectedClubs(new Set())
     onClose()
   }
 
   const renderClubItem = ({ item: club }) => {
     const isSelected = selectedClubs.has(club.id)
-    const isParticipating = participatingClubIds.includes(club.id)
 
     return (
       <TouchableOpacity
         style={[
           styles.clubItem,
           isSelected && styles.clubItemSelected,
-          isParticipating && styles.clubItemParticipating
         ]}
-        onPress={() => !isParticipating && toggleClub(club.id)}
-        disabled={isParticipating}
+        onPress={() => toggleClub(club.id)}
       >
         <View style={styles.clubInfo}>
           <Avatar
@@ -79,21 +75,15 @@ export const ClubSelectionModal = ({
         </View>
 
         <View style={styles.clubStatus}>
-          {isParticipating ? (
-            <Badge text="✅ Participe" variant="success" size="small" />
-          ) : isSelected ? (
-            <Badge text="🎯 Sélectionné" variant="primary" size="small" />
+          {isSelected ? (
+            <Badge text="✅ Sélectionné" variant="success" size="small" />
           ) : (
-            <View style={styles.checkbox}>
-              <Text style={styles.checkboxText}>○</Text>
-            </View>
+            <View style={styles.checkbox} />
           )}
         </View>
       </TouchableOpacity>
     )
   }
-
-  const availableClubs = clubs.filter(club => !participatingClubIds.includes(club.id))
 
   return (
     <Modal
@@ -110,18 +100,18 @@ export const ClubSelectionModal = ({
           </TouchableOpacity>
           
           <View style={styles.headerCenter}>
-            <Text style={styles.title}>Inscrire mes clubs</Text>
+            <Text style={styles.title}>Gérer les clubs</Text>
             <Text style={styles.subtitle}>{challenge?.title}</Text>
           </View>
 
-          <TouchableOpacity 
-            onPress={handleConfirm} 
+          <TouchableOpacity
+            onPress={handleConfirm}
             style={styles.confirmButton}
-            disabled={selectedClubs.size === 0 || loading}
+            disabled={loading}
           >
             <Text style={[
               styles.confirmText,
-              (selectedClubs.size === 0 || loading) && styles.confirmTextDisabled
+              loading && styles.confirmTextDisabled
             ]}>
               {loading ? 'En cours...' : 'Confirmer'}
             </Text>
@@ -130,29 +120,20 @@ export const ClubSelectionModal = ({
 
         {/* Content */}
         <View style={styles.content}>
-          {availableClubs.length === 0 ? (
+          {clubs.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🏆</Text>
-              <Text style={styles.emptyTitle}>Aucun club disponible</Text>
+              <Text style={styles.emptyTitle}>Aucun club</Text>
               <Text style={styles.emptyText}>
-                {clubs.length === 0 
-                  ? "Vous n'êtes propriétaire d'aucun club. Créez un club pour pouvoir l'inscrire aux challenges !"
-                  : "Tous vos clubs participent déjà à ce challenge."
-                }
+                Vous n'êtes propriétaire d'aucun club. Créez-en un pour l'inscrire !
               </Text>
             </View>
           ) : (
             <>
               <View style={styles.infoContainer}>
                 <Text style={styles.infoText}>
-                  Sélectionnez les clubs que vous souhaitez inscrire au challenge.
-                  Seuls les propriétaires peuvent inscrire leurs clubs.
+                  Cochez les clubs que vous souhaitez faire participer à ce challenge.
                 </Text>
-                {participatingClubIds.length > 0 && (
-                  <Text style={styles.participatingText}>
-                    {participatingClubIds.length} de vos clubs participent déjà.
-                  </Text>
-                )}
               </View>
 
               <FlatList
@@ -162,14 +143,6 @@ export const ClubSelectionModal = ({
                 contentContainerStyle={styles.clubsList}
                 showsVerticalScrollIndicator={false}
               />
-
-              {selectedClubs.size > 0 && (
-                <View style={styles.selectionSummary}>
-                  <Text style={styles.selectionText}>
-                    {selectedClubs.size} club{selectedClubs.size > 1 ? 's' : ''} sélectionné{selectedClubs.size > 1 ? 's' : ''}
-                  </Text>
-                </View>
-              )}
             </>
           )}
         </View>
@@ -241,12 +214,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     lineHeight: TYPOGRAPHY.lineHeights.relaxed,
   },
-  participatingText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.success,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    marginTop: SPACING.sm,
-  },
   clubsList: {
     paddingBottom: SPACING.xl,
   },
@@ -258,16 +225,12 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderRadius: RADIUS.md,
     marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   clubItemSelected: {
-    borderWidth: 2,
     borderColor: COLORS.primary,
     backgroundColor: COLORS.primaryAlpha,
-  },
-  clubItemParticipating: {
-    opacity: 0.7,
-    backgroundColor: COLORS.successAlpha,
   },
   clubInfo: {
     flexDirection: 'row',
@@ -297,26 +260,8 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: COLORS.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxText: {
-    fontSize: 16,
-    color: COLORS.textMuted,
-  },
-  selectionSummary: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    marginTop: SPACING.md,
-    ...SHADOWS.sm,
-  },
-  selectionText: {
-    fontSize: TYPOGRAPHY.sizes.base,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    color: COLORS.primary,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
   },
   emptyContainer: {
     flex: 1,

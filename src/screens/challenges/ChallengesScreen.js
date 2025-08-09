@@ -165,29 +165,51 @@ export const ChallengesScreen = ({ navigation }) => {
     })
   }
 
-  const handleSelectClubs = async (selectedClubIds) => {
+  const handleManageClubs = async (newlySelectedClubIds) => {
     const challenge = clubSelectionModal.challenge
-    if (!challenge || !selectedClubIds.length) return
+    if (!challenge) return
+
+    setClubSelectionModal({ visible: false, challenge: null })
+
+    const originalParticipatingIds = new Set(challenge.clubParticipations?.map(p => p.club_id) || [])
+    const newSelectedIds = new Set(newlySelectedClubIds)
+
+    const clubsToAdd = newlySelectedClubIds.filter(id => !originalParticipatingIds.has(id))
+    const clubsToRemove = Array.from(originalParticipatingIds).filter(id => !newSelectedIds.has(id))
+
+    if (clubsToAdd.length === 0 && clubsToRemove.length === 0) {
+      return // Nothing to do
+    }
 
     setParticipatingChallenges(prev => new Set(prev).add(challenge.id))
     try {
-      const result = await participateClubsInChallenge(challenge.id, selectedClubIds, user.id)
-      if (result.success) {
-        const clubNames = selectedClubIds.length === 1 ? 'le club sélectionné' : `${selectedClubIds.length} clubs`
-        Alert.alert(
-          '🏆 Inscription confirmée !', 
-          `${clubNames} participe${selectedClubIds.length > 1 ? 'nt' : ''} maintenant au challenge "${challenge.title}"`
-        )
-        // Refresh les données
-        await Promise.all([
-          loadUserChallenges(user.id),
-          loadClubChallenges(user.id)
-        ])
-      } else {
-        Alert.alert('Erreur', result.error || 'Impossible d\'inscrire les clubs au challenge')
+      const promises = []
+      if (clubsToAdd.length > 0) {
+        promises.push(participateClubsInChallenge(challenge.id, clubsToAdd, user.id))
       }
+      if (clubsToRemove.length > 0) {
+        clubsToRemove.forEach(clubId => {
+          promises.push(removeClubFromChallenge(challenge.id, clubId, user.id))
+        })
+      }
+
+      const results = await Promise.all(promises)
+      
+      const errors = results.filter(r => !r.success)
+      if (errors.length > 0) {
+        Alert.alert('Erreur partielle', `Certaines opérations ont échoué: ${errors.map(e=>e.error).join('\n')}`)
+      } else {
+        Alert.alert('Succès', 'Les participations des clubs ont été mises à jour.')
+      }
+
+      // Refresh data
+      await Promise.all([
+        loadUserChallenges(user.id),
+        loadClubChallenges(user.id)
+      ])
+
     } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription')
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la mise à jour des clubs.')
     } finally {
       setParticipatingChallenges(prev => {
         const newSet = new Set(prev)
@@ -371,7 +393,7 @@ export const ChallengesScreen = ({ navigation }) => {
         onClose={() => setClubSelectionModal({ visible: false, challenge: null })}
         clubs={clubSelectionModal.challenge?.ownedClubs || []}
         challenge={clubSelectionModal.challenge}
-        onSelectClubs={handleSelectClubs}
+        onSelectClubs={handleManageClubs}
         participatingClubIds={clubSelectionModal.challenge?.clubParticipations?.map(p => p.club_id) || []}
         loading={participatingChallenges.has(clubSelectionModal.challenge?.id)}
       />

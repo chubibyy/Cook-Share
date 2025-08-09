@@ -188,40 +188,7 @@ const ChallengeCard = ({
           )}
         </View>
 
-        {/* Liste des clubs participants (pour les challenges de club) */}
-        {type === 'club' && hasParticipatingClubs && (
-          <View style={styles.participatingClubs}>
-            <Text style={styles.participatingClubsTitle}>Mes clubs participants:</Text>
-            <View style={styles.clubsList}>
-              {clubParticipations.slice(0, 3).map((participation, index) => (
-                <View key={index} style={styles.clubParticipation}>
-                  <View style={styles.clubInfo}>
-                    <Badge 
-                      text={`🏆 ${participation.club?.name || 'Club sans nom'}`}
-                      variant="success" 
-                      size="small" 
-                    />
-                  </View>
-                  {onRemoveClub && (
-                    <TouchableOpacity 
-                      style={styles.removeClubButton}
-                      onPress={() => onRemoveClub?.(challenge, participation.club_id)}
-                    >
-                      <Text style={styles.removeClubText}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-              {clubParticipations.length > 3 && (
-                <View style={styles.moreClubsContainer}>
-                  <Text style={styles.moreClubs}>
-                    +{clubParticipations.length - 3} autre{clubParticipations.length - 3 > 1 ? 's' : ''} club{clubParticipations.length - 3 > 1 ? 's' : ''}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
+        
       </View>
     </TouchableOpacity>
   )
