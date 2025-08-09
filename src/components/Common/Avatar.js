@@ -1,12 +1,13 @@
 // src/components/common/Avatar.js
 import React from 'react'
-import { 
-  View, 
-  Image, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity 
+import {
+  View,
+  Image,
+  Text,
+  StyleSheet,
+  TouchableOpacity
 } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../utils/constants'
 import { getLevelFromXP } from '../../utils/constants'
@@ -18,9 +19,11 @@ const Avatar = ({
   xp = 0,
   showBadge = false,
   onPress,
+  userId,
   style,
   ...props
 }) => {
+  const navigation = useNavigation()
   const sizeValue = sizes[size]
   const level = getLevelFromXP(xp)
   
@@ -57,9 +60,17 @@ const Avatar = ({
     </View>
   )
 
-  if (onPress) {
+  const handlePress = () => {
+    if (onPress) {
+      onPress()
+    } else if (userId) {
+      navigation.navigate('UserProfileScreen', { userId })
+    }
+  }
+
+  if (onPress || userId) {
     return (
-      <TouchableOpacity onPress={onPress}>
+      <TouchableOpacity onPress={handlePress}>
         <AvatarContent />
       </TouchableOpacity>
     )

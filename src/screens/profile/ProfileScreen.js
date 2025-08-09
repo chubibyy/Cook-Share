@@ -108,7 +108,7 @@ export const ProfileScreen = ({ navigation }) => {
     return (
       <View style={styles.profileHeader}>
         <View style={styles.profileInfo}>
-          <Avatar source={{ uri: user.avatar_url }} size="large" name={user.username} />
+          <Avatar source={{ uri: user.avatar_url }} size="large" name={user.username} userId={user.id} />
           <View style={styles.userInfo}>
             <Text style={styles.username}>{user.username}</Text>
             <Text style={styles.bio} numberOfLines={2}>{user.bio || 'Aucune bio'}</Text>

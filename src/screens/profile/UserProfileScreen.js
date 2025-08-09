@@ -11,7 +11,8 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  Share
+  Share,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
@@ -20,15 +21,17 @@ import { Header } from '../../components/layout/Header';
 import { SessionCard } from '../../components/cards/SessionCard';
 import { Avatar, Button } from '../../components/common';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, getLevelFromXP } from '../../utils/constants';
+import { usersService } from '../../services/users';
 
 export const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
   const { user: currentUser } = useAuthStore();
   const { sessions, loading, loadFeed, refresh } = useSessionStore();
-  
+
   const [userProfile, setUserProfile] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [badges, setBadges] = useState([]);
 
   // Filter sessions to show only this user's sessions
   const userSessions = sessions.filter(session => session.user_id === userId);
@@ -52,9 +55,15 @@ export const UserProfileScreen = ({ route, navigation }) => {
   );
 
   const loadUserProfile = async () => {
-    // This would typically come from a user service
-    // For now, we'll use the session data to get user info
-    setUserLoading(false);
+    try {
+      const userBadges = await usersService.getUserBadges(userId);
+      setBadges(userBadges);
+    } catch (error) {
+      console.error('Erreur récupération badges utilisateur:', error);
+      Alert.alert('Erreur', "Impossible de charger les badges de l'utilisateur.");
+    } finally {
+      setUserLoading(false);
+    }
   };
 
   const handleRefresh = async () => {
@@ -109,6 +118,28 @@ export const UserProfileScreen = ({ route, navigation }) => {
       Alert.alert('Erreur', 'Impossible de partager la session.')
     }
   };
+
+  const BadgesSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>Collection de Badges ({badges.length})</Text>
+      {badges.length === 0 ? (
+        <Text style={styles.emptySubtext}>Cet utilisateur n'a pas encore gagné de badge.</Text>
+      ) : (
+        <FlatList
+          data={badges}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => Alert.alert(item.challenge?.title || 'Badge', `Gagné le ${new Date(item.earned_at).toLocaleDateString()}`)}>
+              <Image source={{ uri: item.badge_image_url }} style={styles.badgeImage} />
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={{ paddingVertical: SPACING.sm }}
+        />
+      )}
+    </View>
+  );
 
   const handleGoBack = () => {
     navigation.goBack();
@@ -168,6 +199,7 @@ export const UserProfileScreen = ({ route, navigation }) => {
                 size="large"
                 name={displayUser?.username || 'Utilisateur'}
                 xp={displayUser?.xp || 0}
+                userId={displayUser?.id || userId}
               />
               <View style={styles.userInfo}>
                 <Text style={styles.username}>
@@ -178,7 +210,7 @@ export const UserProfileScreen = ({ route, navigation }) => {
                 </Text>
               </View>
             </View>
-            
+            <BadgesSection />
             <View style={styles.statsContainer}>
               <Text style={styles.sectionTitle}>
                 Sessions ({userSessions.length})
@@ -261,6 +293,13 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weights.semibold,
     color: COLORS.text,
   },
+  sectionContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    ...SHADOWS.sm,
+    marginBottom: SPACING.md,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -277,5 +316,12 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.base,
     color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  badgeImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: SPACING.md,
+    backgroundColor: COLORS.borderLight,
   },
 });

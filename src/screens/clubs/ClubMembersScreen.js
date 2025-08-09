@@ -102,6 +102,7 @@ export const ClubMembersScreen = ({ navigation }) => {
               name={user.username || 'Utilisateur inconnu'}
               size="medium"
               style={styles.memberAvatar}
+              userId={user.id || member.user_id}
             />
           <View style={styles.memberDetails}>
             <View style={styles.memberHeader}>

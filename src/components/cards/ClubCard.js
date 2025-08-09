@@ -205,6 +205,7 @@ const ClubCard = ({
                 source={{ uri: member.avatar_url }}
                 name={member.username}
                 size="small"
+                userId={member.id}
                 style={[
                   styles.memberAvatar,
                   index > 0 && { marginLeft: -8 }
