@@ -93,6 +93,7 @@ export const JoinRequestsScreen = ({ navigation }) => {
             name={username}
             xp={xp}
             showBadge={true}
+            userId={item.user_id || item.user?.id}
           />
           <View style={styles.userDetails}>
             <Text style={styles.username}>{username}</Text>

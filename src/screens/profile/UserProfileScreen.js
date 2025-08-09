@@ -168,6 +168,7 @@ export const UserProfileScreen = ({ route, navigation }) => {
                 size="large"
                 name={displayUser?.username || 'Utilisateur'}
                 xp={displayUser?.xp || 0}
+                userId={displayUser?.id || userId}
               />
               <View style={styles.userInfo}>
                 <Text style={styles.username}>

@@ -1,14 +1,15 @@
 // src/components/cards/SessionCard.js
 import React, { useState, useRef, useEffect } from 'react'
-import { 
-  View, 
-  Text, 
-  Image, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
   Dimensions,
-  Animated 
+  Animated
 } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Avatar, Badge } from '../common'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
@@ -31,6 +32,7 @@ const SessionCard = ({
   const [saved, setSaved] = useState(session.isSaved || false)
   const [likesCount, setLikesCount] = useState(session.likesCount || 0)
   const [commentsCount, setCommentsCount] = useState(session.commentsCount || 0)
+  const navigation = useNavigation()
   
   const likeAnimation = useRef(new Animated.Value(1)).current
 
@@ -144,7 +146,13 @@ const SessionCard = ({
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.userInfo}
-            onPress={() => onUserPress?.(session)}
+            onPress={() => {
+              if (onUserPress) {
+                onUserPress(session)
+              } else {
+                navigation.navigate('UserProfileScreen', { userId: session.user_id })
+              }
+            }}
           >
             <Avatar
               source={session.user?.avatar_url ? { uri: session.user.avatar_url } : undefined}
@@ -152,6 +160,7 @@ const SessionCard = ({
               name={session.user?.username || 'Utilisateur inconnu'}
               xp={session.user?.xp || 0}
               showBadge={true}
+              userId={session.user_id}
             />
             <View style={styles.userDetails}>
               <Text style={styles.username}>{session.user?.username || 'Utilisateur inconnu'}</Text>

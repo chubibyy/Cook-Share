@@ -201,6 +201,7 @@ export const SessionDetailScreen = ({ route, navigation }) => {
                 name={currentSession.user?.username}
                 xp={currentSession.user?.xp}
                 showBadge={true}
+                userId={currentSession.user_id || currentSession.user?.id}
               />
               <View style={styles.userInfo}>
                 <Text style={styles.username}>{currentSession.user?.username}</Text>
@@ -299,6 +300,7 @@ export const SessionDetailScreen = ({ route, navigation }) => {
                   source={{ uri: user?.avatar_url }}
                   size="small"
                   name={user?.username}
+                  userId={user?.id}
                 />
                 <View style={styles.commentInputContainer}>
                   <TextInput
@@ -333,6 +335,7 @@ export const SessionDetailScreen = ({ route, navigation }) => {
                         source={{ uri: comment.user?.avatar_url }}
                         size="small"
                         name={comment.user?.username}
+                        userId={comment.user_id}
                       />
                       <View style={styles.commentContent}>
                         <View style={styles.commentBubble}>
