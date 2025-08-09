@@ -39,6 +39,9 @@ export const ClubDetailScreen = ({ navigation }) => {
   const [showOwnerMenu, setShowOwnerMenu] = useState(false)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
 
+  // Vérifier si l'utilisateur est membre du club
+  const isMember = currentClub?.userMembership !== null && currentClub?.userMembership !== undefined
+
   useEffect(() => {
     loadClubById(clubId)
     loadClubFeed(clubId, true)
@@ -396,10 +399,36 @@ export const ClubDetailScreen = ({ navigation }) => {
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.chatList}
             />
-            <View style={styles.chatInputRow}>
-              <TextInput style={styles.chatInput} value={message} onChangeText={setMessage} placeholder="Message..."/>
-              <TouchableOpacity style={styles.chatSend} onPress={sendMessage}><Text style={styles.chatSendText}>➤</Text></TouchableOpacity>
-            </View>
+            {/* Zone d'input de chat - seulement pour les membres */}
+            {isMember ? (
+              <View style={styles.chatInputRow}>
+                <TextInput 
+                  style={styles.chatInput} 
+                  value={message} 
+                  onChangeText={setMessage} 
+                  placeholder="Message..."
+                />
+                <TouchableOpacity style={styles.chatSend} onPress={sendMessage}>
+                  <Text style={styles.chatSendText}>➤</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.chatRestrictionContainer}>
+                <Text style={styles.chatRestrictionText}>
+                  {currentClub?.is_private 
+                    ? "🔒 Vous devez être membre de ce club privé pour participer au chat"
+                    : "✨ Rejoignez ce club pour participer au chat"
+                  }
+                </Text>
+                <Button
+                  title="Rejoindre le club"
+                  variant="primary"
+                  size="small"
+                  onPress={handleToggleMembership}
+                  style={styles.joinChatButton}
+                />
+              </View>
+            )}
           </View>
         )}
       </KeyboardAvoidingView>
@@ -654,6 +683,24 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: COLORS.error,
+  },
+  // Styles pour la restriction du chat
+  chatRestrictionContainer: {
+    padding: SPACING.lg,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    alignItems: 'center',
+  },
+  chatRestrictionText: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+    lineHeight: TYPOGRAPHY.lineHeights.relaxed,
+  },
+  joinChatButton: {
+    minWidth: 150,
   },
 })
 

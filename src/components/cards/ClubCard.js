@@ -226,7 +226,7 @@ const ClubCard = ({
             size="small"
             onPress={handleActionPress}
             disabled={club.userMembership?.role === 'owner' || 
-                      (isPrivate && (requestStatus?.status === 'pending' || requestStatus?.status === 'rejected'))}
+                      (isPrivate && !isMember && (requestStatus?.status === 'pending' || requestStatus?.status === 'rejected'))}
             style={styles.actionButton}
           />
         </View>

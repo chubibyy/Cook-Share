@@ -11,6 +11,7 @@ export const ClubsScreen = ({ navigation }) => {
   const { clubs, loading, error, loadClubs, joinClub, leaveClub, requestToJoinClub } = useClubStore()
   const user = useAuthStore((s) => s.user)
   const [refreshing, setRefreshing] = useState(false)
+  const [filter, setFilter] = useState('all') // 'all' | 'joined'
 
   useEffect(() => {
     loadClubs()
@@ -59,6 +60,14 @@ export const ClubsScreen = ({ navigation }) => {
     }
   }
 
+  // Filtrer les clubs selon le filtre sélectionné
+  const filteredClubs = clubs.filter(club => {
+    if (filter === 'joined') {
+      return club.userMembership !== null
+    }
+    return true // 'all'
+  })
+
   const renderItem = ({ item }) => (
     <ClubCard
       club={item}
@@ -78,16 +87,43 @@ export const ClubsScreen = ({ navigation }) => {
         <Button title="Créer un club" onPress={() => navigation.navigate('CreateClub')} size="small" />
       </View>
 
+      {/* Filtres */}
+      <View style={styles.filters}>
+        <TouchableOpacity 
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+            Tous les clubs
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.filterButton, filter === 'joined' && styles.filterButtonActive]}
+          onPress={() => setFilter('joined')}
+        >
+          <Text style={[styles.filterText, filter === 'joined' && styles.filterTextActive]}>
+            Clubs rejoints ({clubs.filter(c => c.userMembership).length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={clubs}
+        data={filteredClubs}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />}
         contentContainerStyle={styles.list}
         ListEmptyComponent={!loading ? (
           <View style={styles.empty}>            
-            <Text style={styles.emptyTitle}>Aucun club pour le moment</Text>
-            <Text style={styles.emptyText}>Créez votre club ou rejoignez-en un existant.</Text>
+            <Text style={styles.emptyTitle}>
+              {filter === 'joined' ? 'Aucun club rejoint' : 'Aucun club pour le moment'}
+            </Text>
+            <Text style={styles.emptyText}>
+              {filter === 'joined' 
+                ? 'Vous n\'avez rejoint aucun club pour le moment.'
+                : 'Créez votre club ou rejoignez-en un existant.'
+              }
+            </Text>
             <Button title="Créer un club" onPress={() => navigation.navigate('CreateClub')} />
           </View>
         ) : null}
@@ -100,6 +136,33 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.md, paddingVertical: SPACING.md },
   title: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold, color: COLORS.text },
+  filters: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  filterButton: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  filterButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.medium,
+    color: COLORS.textSecondary,
+  },
+  filterTextActive: {
+    color: COLORS.white,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+  },
   list: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl },
   card: { marginVertical: SPACING.xs },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl },
