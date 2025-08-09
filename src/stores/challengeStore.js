@@ -261,6 +261,91 @@ export const useChallengeStore = create((set, get) => ({
     }
   },
 
+  // Inscrire des clubs à un challenge
+  participateClubsInChallenge: async (challengeId, clubIds, userId) => {
+    try {
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      set({ loading: true, error: null })
+
+      await challengesService.participateClubsInChallenge(challengeId, clubIds, userId)
+
+      // Mettre à jour les challenges clubs
+      const { clubChallenges } = get()
+      
+      const updateChallenge = (challenge) => {
+        if (challenge.id === challengeId) {
+          return {
+            ...challenge,
+            participantsCount: (challenge.participantsCount || 0) + clubIds.length,
+            clubParticipations: [
+              ...(challenge.clubParticipations || []),
+              ...clubIds.map(clubId => ({
+                challenge_id: challengeId,
+                club_id: clubId,
+                status: 'en_cours'
+              }))
+            ]
+          }
+        }
+        return challenge
+      }
+
+      set({
+        clubChallenges: clubChallenges.map(updateChallenge),
+        loading: false
+      })
+
+      return { success: true }
+    } catch (error) {
+      set({
+        error: error.message,
+        loading: false
+      })
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Désinscrire un club d'un challenge
+  removeClubFromChallenge: async (challengeId, clubId, userId) => {
+    try {
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      set({ loading: true, error: null })
+
+      await challengesService.removeClubFromChallenge(challengeId, clubId, userId)
+
+      // Mettre à jour les challenges clubs
+      const { clubChallenges } = get()
+      
+      const updateChallenge = (challenge) => {
+        if (challenge.id === challengeId) {
+          return {
+            ...challenge,
+            participantsCount: Math.max(0, (challenge.participantsCount || 0) - 1),
+            clubParticipations: (challenge.clubParticipations || []).filter(
+              p => p.club_id !== clubId
+            )
+          }
+        }
+        return challenge
+      }
+
+      set({
+        clubChallenges: clubChallenges.map(updateChallenge),
+        loading: false
+      })
+
+      return { success: true }
+    } catch (error) {
+      set({
+        error: error.message,
+        loading: false
+      })
+      return { success: false, error: error.message }
+    }
+  },
+
   // Obtenir un challenge par ID
   getChallengeById: async (challengeId) => {
     try {

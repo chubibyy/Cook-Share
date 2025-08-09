@@ -6,6 +6,7 @@ import { useChallengeStore } from '../../stores/challengeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { ChallengeCard } from '../../components/cards/ChallengeCard'
 import { Badge } from '../../components/common'
+import { ClubSelectionModal } from '../../components/modals/ClubSelectionModal'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
 
 export const ChallengesScreen = ({ navigation }) => {
@@ -18,13 +19,19 @@ export const ChallengesScreen = ({ navigation }) => {
     loadClubChallenges,
     loadUserStats,
     participateInChallenge,
-    abandonChallenge
+    abandonChallenge,
+    participateClubsInChallenge,
+    removeClubFromChallenge
   } = useChallengeStore()
   
   const user = useAuthStore((s) => s.user)
   const [activeTab, setActiveTab] = useState('user') // 'user' | 'club'
   const [refreshing, setRefreshing] = useState(false)
   const [participatingChallenges, setParticipatingChallenges] = useState(new Set())
+  const [clubSelectionModal, setClubSelectionModal] = useState({
+    visible: false,
+    challenge: null
+  })
 
   useEffect(() => {
     if (user?.id) {
@@ -138,6 +145,96 @@ export const ChallengesScreen = ({ navigation }) => {
     }
   }
 
+  const handleClubChallengeParticipate = async (challenge) => {
+    if (!user?.id) {
+      return Alert.alert('Connexion requise', 'Veuillez vous connecter pour gérer les challenges de club')
+    }
+
+    // Vérifier si l'utilisateur possède des clubs
+    if (!challenge.ownedClubs || challenge.ownedClubs.length === 0) {
+      return Alert.alert(
+        'Aucun club possédé',
+        'Vous devez être propriétaire d\'un club pour pouvoir l\'inscrire aux challenges. Créez un club d\'abord !'
+      )
+    }
+
+    // Ouvrir le modal de sélection des clubs
+    setClubSelectionModal({
+      visible: true,
+      challenge: challenge
+    })
+  }
+
+  const handleSelectClubs = async (selectedClubIds) => {
+    const challenge = clubSelectionModal.challenge
+    if (!challenge || !selectedClubIds.length) return
+
+    setParticipatingChallenges(prev => new Set(prev).add(challenge.id))
+    try {
+      const result = await participateClubsInChallenge(challenge.id, selectedClubIds, user.id)
+      if (result.success) {
+        const clubNames = selectedClubIds.length === 1 ? 'le club sélectionné' : `${selectedClubIds.length} clubs`
+        Alert.alert(
+          '🏆 Inscription confirmée !', 
+          `${clubNames} participe${selectedClubIds.length > 1 ? 'nt' : ''} maintenant au challenge "${challenge.title}"`
+        )
+        // Refresh les données
+        await Promise.all([
+          loadUserChallenges(user.id),
+          loadClubChallenges(user.id)
+        ])
+      } else {
+        Alert.alert('Erreur', result.error || 'Impossible d\'inscrire les clubs au challenge')
+      }
+    } catch (error) {
+      Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription')
+    } finally {
+      setParticipatingChallenges(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(challenge.id)
+        return newSet
+      })
+    }
+  }
+
+  const handleRemoveClubFromChallenge = async (challenge, clubId) => {
+    Alert.alert(
+      'Désinscrire le club',
+      'Êtes-vous sûr de vouloir retirer ce club du challenge ? Cette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Désinscrire',
+          style: 'destructive',
+          onPress: async () => {
+            setParticipatingChallenges(prev => new Set(prev).add(challenge.id))
+            try {
+              const result = await removeClubFromChallenge(challenge.id, clubId, user.id)
+              if (result.success) {
+                Alert.alert('Club désinscrit', 'Le club ne participe plus à ce challenge')
+                // Refresh les données
+                await Promise.all([
+                  loadUserChallenges(user.id),
+                  loadClubChallenges(user.id)
+                ])
+              } else {
+                Alert.alert('Erreur', result.error || 'Impossible de désinscrire le club')
+              }
+            } catch (error) {
+              Alert.alert('Erreur', 'Une erreur est survenue lors de la désinscription')
+            } finally {
+              setParticipatingChallenges(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(challenge.id)
+                return newSet
+              })
+            }
+          }
+        }
+      ]
+    )
+  }
+
   const handleChallengePress = (challenge) => {
     navigation.navigate('ChallengeDetail', { 
       challengeId: challenge.id,
@@ -188,7 +285,8 @@ export const ChallengesScreen = ({ navigation }) => {
     <ChallengeCard
       challenge={challenge}
       onPress={() => handleChallengePress(challenge)}
-      onParticipate={() => handleParticipate(challenge)}
+      onParticipate={() => activeTab === 'user' ? handleParticipate(challenge) : handleClubChallengeParticipate(challenge)}
+      onRemoveClub={activeTab === 'club' ? handleRemoveClubFromChallenge : undefined}
       type={activeTab}
       isProcessing={participatingChallenges.has(challenge.id)}
     />
@@ -265,6 +363,17 @@ export const ChallengesScreen = ({ navigation }) => {
         }
         ListEmptyComponent={!loading ? renderEmptyState : null}
         showsVerticalScrollIndicator={false}
+      />
+
+      {/* Modal de sélection des clubs */}
+      <ClubSelectionModal
+        visible={clubSelectionModal.visible}
+        onClose={() => setClubSelectionModal({ visible: false, challenge: null })}
+        clubs={clubSelectionModal.challenge?.ownedClubs || []}
+        challenge={clubSelectionModal.challenge}
+        onSelectClubs={handleSelectClubs}
+        participatingClubIds={clubSelectionModal.challenge?.clubParticipations?.map(p => p.club_id) || []}
+        loading={participatingChallenges.has(clubSelectionModal.challenge?.id)}
       />
     </SafeAreaView>
   )

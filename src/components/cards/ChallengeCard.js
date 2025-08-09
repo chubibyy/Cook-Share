@@ -16,6 +16,7 @@ const ChallengeCard = ({
   challenge,
   onPress,
   onParticipate,
+  onRemoveClub,
   type = 'user', // 'user' or 'club'
   isProcessing = false,
   style,
@@ -24,6 +25,11 @@ const ChallengeCard = ({
   const isActive = new Date(challenge.end_date) > new Date()
   const isParticipating = challenge.userParticipation?.status === 'en_cours'
   const isCompleted = challenge.userParticipation?.status === 'reussi'
+  
+  // Pour les challenges de club
+  const hasOwnedClubs = challenge.ownedClubs?.length > 0
+  const clubParticipations = challenge.clubParticipations || []
+  const hasParticipatingClubs = clubParticipations.length > 0
   
   const calculateTimeLeft = () => {
     const endDate = new Date(challenge.end_date)
@@ -124,30 +130,94 @@ const ChallengeCard = ({
         <View style={styles.footer}>
           <View style={styles.participantsInfo}>
             <Text style={styles.participantsText}>
-              👥 {challenge.participantsCount || 0} participants
+              👥 {challenge.participantsCount || 0} participant{(challenge.participantsCount || 0) > 1 ? 's' : ''}
             </Text>
+            {type === 'club' && hasParticipatingClubs && (
+              <Text style={styles.myClubsText}>
+                🏆 {clubParticipations.length} de mes clubs
+              </Text>
+            )}
           </View>
           
-          {isActive && !isCompleted && (
-            <Button
-              title={
-                isProcessing ? "..." : 
-                isParticipating ? "Abandonner" : "Participer"
-              }
-              variant={isParticipating ? "outline" : "primary"}
-              size="small"
-              onPress={() => onParticipate?.(challenge)}
-              style={styles.actionButton}
-              disabled={isProcessing}
-            />
-          )}
-          
-          {isCompleted && (
-            <View style={styles.completedBadge}>
-              <Text style={styles.completedText}>🏆 Défi réussi!</Text>
-            </View>
+          {type === 'user' ? (
+            // Boutons pour challenges personnels
+            <>
+              {isActive && !isCompleted && (
+                <Button
+                  title={
+                    isProcessing ? "..." : 
+                    isParticipating ? "Abandonner" : "Participer"
+                  }
+                  variant={isParticipating ? "outline" : "primary"}
+                  size="small"
+                  onPress={() => onParticipate?.(challenge)}
+                  style={styles.actionButton}
+                  disabled={isProcessing}
+                />
+              )}
+              
+              {isCompleted && (
+                <View style={styles.completedBadge}>
+                  <Text style={styles.completedText}>🏆 Défi réussi!</Text>
+                </View>
+              )}
+            </>
+          ) : (
+            // Boutons pour challenges de club
+            <>
+              {isActive && hasOwnedClubs && (
+                <Button
+                  title={
+                    isProcessing ? "..." : 
+                    hasParticipatingClubs ? "Gérer clubs" : "Inscrire clubs"
+                  }
+                  variant={hasParticipatingClubs ? "outline" : "primary"}
+                  size="small"
+                  onPress={() => onParticipate?.(challenge)}
+                  style={styles.actionButton}
+                  disabled={isProcessing}
+                />
+              )}
+              
+              {isActive && !hasOwnedClubs && (
+                <View style={styles.noClubBadge}>
+                  <Text style={styles.noClubText}>Aucun club possédé</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
+
+        {/* Liste des clubs participants (pour les challenges de club) */}
+        {type === 'club' && hasParticipatingClubs && (
+          <View style={styles.participatingClubs}>
+            <Text style={styles.participatingClubsTitle}>Mes clubs participants:</Text>
+            <View style={styles.clubsList}>
+              {clubParticipations.slice(0, 3).map((participation, index) => (
+                <View key={index} style={styles.clubParticipation}>
+                  <Badge 
+                    text="🏆 Participe" 
+                    variant="success" 
+                    size="small" 
+                  />
+                  {onRemoveClub && (
+                    <TouchableOpacity 
+                      style={styles.removeClubButton}
+                      onPress={() => onRemoveClub?.(challenge, participation.club_id)}
+                    >
+                      <Text style={styles.removeClubText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              {clubParticipations.length > 3 && (
+                <Text style={styles.moreClubs}>
+                  +{clubParticipations.length - 3} autres
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   )
@@ -270,6 +340,64 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     color: COLORS.success,
     fontWeight: TYPOGRAPHY.weights.semibold,
+  },
+  myClubsText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.weights.medium,
+    marginTop: 2,
+  },
+  noClubBadge: {
+    backgroundColor: COLORS.textMuted + '20',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.sm,
+  },
+  noClubText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.textMuted,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+  participatingClubs: {
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  participatingClubsTitle: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  clubsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+  },
+  clubParticipation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  removeClubButton: {
+    marginLeft: SPACING.xs,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.error + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeClubText: {
+    fontSize: 12,
+    color: COLORS.error,
+    fontWeight: TYPOGRAPHY.weights.bold,
+  },
+  moreClubs: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
   },
 })
 

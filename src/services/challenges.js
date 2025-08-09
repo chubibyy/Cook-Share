@@ -130,6 +130,109 @@ export const challengesService = {
     }
   },
 
+  // Inscrire des clubs à un challenge (propriétaire uniquement)
+  async participateClubsInChallenge(challengeId, clubIds, userId) {
+    try {
+      // Vérifier que l'utilisateur est propriétaire de tous les clubs
+      for (const clubId of clubIds) {
+        const { data: membership, error: membershipError } = await supabase
+          .from('club_members')
+          .select('role')
+          .eq('club_id', clubId)
+          .eq('user_id', userId)
+          .single()
+
+        if (membershipError || !membership || membership.role !== 'owner') {
+          throw new Error(`Vous devez être propriétaire du club pour l'inscrire au challenge`)
+        }
+
+        // Vérifier si le club participe déjà
+        const { data: existingParticipation, error: checkError } = await supabase
+          .from('club_challenges')
+          .select('id')
+          .eq('challenge_id', challengeId)
+          .eq('club_id', clubId)
+          .single()
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError
+        }
+
+        if (existingParticipation) {
+          throw new Error('Ce club participe déjà au challenge')
+        }
+      }
+
+      // Inscrire tous les clubs
+      const inscriptions = clubIds.map(clubId => ({
+        challenge_id: challengeId,
+        club_id: clubId,
+        status: 'en_cours'
+      }))
+
+      const { data, error } = await supabase
+        .from('club_challenges')
+        .insert(inscriptions)
+        .select()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Erreur inscription clubs challenge:', error)
+      throw error
+    }
+  },
+
+  // Désinscrire un club d'un challenge (propriétaire uniquement)
+  async removeClubFromChallenge(challengeId, clubId, userId) {
+    try {
+      // Vérifier que l'utilisateur est propriétaire du club
+      const { data: membership, error: membershipError } = await supabase
+        .from('club_members')
+        .select('role')
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+        .single()
+
+      if (membershipError || !membership || membership.role !== 'owner') {
+        throw new Error('Vous devez être propriétaire du club pour le désinscrire')
+      }
+
+      // Supprimer la participation
+      const { error } = await supabase
+        .from('club_challenges')
+        .delete()
+        .eq('challenge_id', challengeId)
+        .eq('club_id', clubId)
+
+      if (error) throw error
+      return { success: true }
+    } catch (error) {
+      console.error('Erreur désinscription club challenge:', error)
+      throw error
+    }
+  },
+
+  // Récupérer les clubs possédés par l'utilisateur
+  async getUserOwnedClubs(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('club_members')
+        .select(`
+          club_id,
+          club:clubs(id, name, avatar_url, description)
+        `)
+        .eq('user_id', userId)
+        .eq('role', 'owner')
+
+      if (error) throw error
+      return data?.map(cm => cm.club) || []
+    } catch (error) {
+      console.error('Erreur récupération clubs possédés:', error)
+      throw error
+    }
+  },
+
   // Soumettre une session pour un challenge
   async submitChallengeSession(challengeId, userId, sessionId) {
     try {
@@ -170,10 +273,11 @@ export const challengesService = {
   // Récupérer les challenges personnels de l'utilisateur
   async getUserChallenges(userId) {
     try {
-      // Récupérer tous les challenges (pour l'instant tous sont considérés comme personnels)
+      // Récupérer seulement les challenges personnels (is_club_challenge = false)
       const { data: challenges, error } = await supabase
         .from('challenges')
         .select('*')
+        .eq('is_club_challenge', false)
         .order('id', { ascending: false })
 
       if (error) throw error
@@ -233,10 +337,81 @@ export const challengesService = {
   // Récupérer les challenges des clubs de l'utilisateur
   async getClubChallenges(userId) {
     try {
-      // Pour l'instant, retourner un tableau vide car il n'y a pas de structure club_challenges dans le schema
-      // TODO: Implémenter quand la structure de base de données sera mise à jour
-      console.log('🏆 Club challenges pas encore implémentés - structure BD manquante')
-      return []
+      // Récupérer seulement les challenges de club (is_club_challenge = true)
+      const { data: challenges, error } = await supabase
+        .from('challenges')
+        .select('*')
+        .eq('is_club_challenge', true)
+        .order('id', { ascending: false })
+
+      if (error) throw error
+
+      if (!challenges || challenges.length === 0) return []
+
+      const challengeIds = challenges.map(c => c.id)
+
+      // Récupérer les clubs de l'utilisateur où il est propriétaire
+      const { data: userOwnedClubs, error: clubsError } = await supabase
+        .from('club_members')
+        .select(`
+          club_id,
+          club:clubs(id, name, avatar_url)
+        `)
+        .eq('user_id', userId)
+        .eq('role', 'owner')
+
+      if (clubsError) throw clubsError
+
+      const ownedClubIds = userOwnedClubs?.map(cm => cm.club_id) || []
+
+      // Récupérer les participations des clubs aux challenges
+      let clubParticipations = []
+      if (challengeIds.length > 0 && ownedClubIds.length > 0) {
+        const { data: participationsData, error: participationsError } = await supabase
+          .from('club_challenges')
+          .select('*')
+          .in('challenge_id', challengeIds)
+          .in('club_id', ownedClubIds)
+
+        if (participationsError) {
+          console.warn('Erreur récupération participations clubs:', participationsError)
+        } else {
+          clubParticipations = participationsData || []
+        }
+      }
+
+      // Compter les participations pour chaque challenge
+      const participantCounts = {}
+      if (challengeIds.length > 0) {
+        const { data: allClubParticipants, error: countError } = await supabase
+          .from('club_challenges')
+          .select('challenge_id')
+          .in('challenge_id', challengeIds)
+
+        if (!countError && allClubParticipants) {
+          allClubParticipants.forEach(p => {
+            participantCounts[p.challenge_id] = (participantCounts[p.challenge_id] || 0) + 1
+          })
+        }
+      }
+
+      // Créer une map des participations par challenge
+      const participationsMap = {}
+      clubParticipations.forEach(p => {
+        if (!participationsMap[p.challenge_id]) {
+          participationsMap[p.challenge_id] = []
+        }
+        participationsMap[p.challenge_id].push(p)
+      })
+
+      return challenges.map(challenge => ({
+        ...challenge,
+        participantsCount: participantCounts[challenge.id] || 0,
+        clubParticipations: participationsMap[challenge.id] || [],
+        isActive: new Date(challenge.end_date) > new Date(),
+        timeLeft: calculateTimeLeft(challenge.end_date),
+        ownedClubs: userOwnedClubs?.map(c => c.club) || []
+      }))
     } catch (error) {
       console.error('Erreur récupération challenges clubs:', error)
       throw error
