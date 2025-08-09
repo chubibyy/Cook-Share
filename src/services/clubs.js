@@ -1,6 +1,6 @@
 
 // src/services/clubs.js
-import { supabase } from './supabase'
+import { supabase, supabaseHelpers } from './supabase'
 
 export const clubsService = {
   // Récupérer les clubs avec statut utilisateur
@@ -37,6 +37,181 @@ export const clubsService = {
     } catch (error) {
       console.error('Erreur récupération clubs:', error)
       throw error
+    }
+  },
+
+  // Chat / forum de club
+  async getClubMessages(clubId, limit = 50) {
+    try {
+      const { data, error } = await supabase
+        .from('club_messages')
+        .select('*, user:users(*)')
+        .eq('club_id', clubId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      return data || []
+    } catch (err) {
+      console.error('Erreur getClubMessages:', err)
+      throw err
+    }
+  },
+
+  async sendClubMessage(clubId, userId, content) {
+    try {
+      const { data, error } = await supabase
+        .from('club_messages')
+        .insert([{ club_id: clubId, user_id: userId, content }])
+        .select('*, user:users(*)')
+        .single()
+      if (error) throw error
+      return data
+    } catch (err) {
+      console.error('Erreur sendClubMessage:', err)
+      throw err
+    }
+  },
+
+  subscribeToClubMessages(clubId, callback) {
+    return supabase
+      .channel(`club_messages_${clubId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'club_messages', filter: `club_id=eq.${clubId}` }, callback)
+      .subscribe()
+  },
+
+  // Créer un club
+  async createClub({ name, description = '', is_private = false, avatar = null }, userId) {
+    try {
+      // 1) Créer le club (sans avatar)
+      const { data: club, error } = await supabase
+        .from('clubs')
+        .insert([
+          {
+            name,
+            description,
+            is_private,
+            created_by: userId,
+          },
+        ])
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      // 2) Uploader l'avatar si fourni
+      let avatar_url = null
+      if (avatar) {
+        const upload = await supabaseHelpers.uploadClubImage(avatar, club.id, 'avatar')
+        avatar_url = upload?.url || null
+        if (avatar_url) {
+          await supabase.from('clubs').update({ avatar_url }).eq('id', club.id)
+        }
+      }
+
+      // 3) Ajouter le créateur comme membre (owner)
+      await supabase
+        .from('club_members')
+        .insert([{ club_id: club.id, user_id: userId, role: 'owner' }])
+
+      return { ...club, avatar_url }
+    } catch (err) {
+      console.error('Erreur createClub:', err)
+      throw err
+    }
+  },
+
+  // Mettre à jour un club (réservé admin)
+  async updateClub(clubId, { name, description, is_private, avatar = null }) {
+    try {
+      const updates = { }
+      if (typeof name === 'string') updates.name = name
+      if (typeof description === 'string') updates.description = description
+      if (typeof is_private === 'boolean') updates.is_private = is_private
+
+      if (avatar) {
+        const upload = await supabaseHelpers.uploadClubImage(avatar, clubId, 'avatar')
+        if (upload?.url) updates.avatar_url = upload.url
+      }
+
+      const { data, error } = await supabase
+        .from('clubs')
+        .update(updates)
+        .eq('id', clubId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (err) {
+      console.error('Erreur updateClub:', err)
+      throw err
+    }
+  },
+
+  // Détails d'un club + stats
+  async getClubById(clubId, userId = null) {
+    try {
+      let query = supabase
+        .from('clubs')
+        .select(
+          `*,
+           members:club_members(*, user:users(*)),
+           sessions_count:cooking_sessions(count),
+           user_membership:club_members(*)
+          `
+        )
+        .eq('id', clubId)
+        .maybeSingle()
+
+      if (userId) query = query.eq('user_membership.user_id', userId)
+
+      const { data, error } = await query
+      if (error) throw error
+      if (!data) return null
+      return {
+        ...data,
+        membersCount: data.members?.length || 0,
+        sessionsCount: data.sessions_count?.[0]?.count || 0,
+        userMembership: data.user_membership?.[0] || null,
+      }
+    } catch (err) {
+      console.error('Erreur getClubById:', err)
+      throw err
+    }
+  },
+
+  // Feed des sessions d'un club
+  async getClubFeed(clubId, page = 0, limit = 10) {
+    try {
+      const { data, error } = await supabase
+        .from('club_sessions')
+        .select(`
+          created_at,
+          session:cooking_sessions(*, user:users(username, avatar_url, xp))
+        `)
+        .eq('club_id', clubId)
+        .order('created_at', { ascending: false })
+        .range(page * limit, (page + 1) * limit - 1)
+
+      if (error) throw error
+      return (data || []).map((row) => ({ ...row.session }))
+    } catch (err) {
+      console.error('Erreur getClubFeed:', err)
+      throw err
+    }
+  },
+
+  // Attacher une session à plusieurs clubs
+  async attachSessionToClubs(sessionId, clubIds = []) {
+    try {
+      if (!clubIds.length) return []
+      const rows = clubIds.map((club_id) => ({ club_id, session_id: sessionId }))
+      const { data, error } = await supabase.from('club_sessions').insert(rows).select('*')
+      if (error && error.code !== '23505') throw error
+      return data || []
+    } catch (err) {
+      console.error('Erreur attachSessionToClubs:', err)
+      throw err
     }
   },
 

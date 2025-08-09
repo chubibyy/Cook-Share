@@ -73,9 +73,7 @@ export const authService = {
   // Récupération mot de passe
   async resetPassword(email) {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      })
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
       
       if (error) throw error
       return true
@@ -164,12 +162,7 @@ export const authService = {
   // Connexion avec fournisseur OAuth (Google, Apple, etc.)
   async signInWithOAuth(provider) {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      })
+      const { data, error } = await supabase.auth.signInWithOAuth({ provider })
       
       if (error) throw error
       return data

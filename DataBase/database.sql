@@ -160,3 +160,23 @@ CREATE TABLE public.users (
   onboarding_completed boolean DEFAULT false,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
+
+-- Club messages (chat/forum)
+CREATE TABLE IF NOT EXISTS public.club_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  club_id uuid REFERENCES public.clubs(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
+  content text NOT NULL,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+-- Mapping sessions ↔ clubs (partage multi-clubs)
+CREATE TABLE IF NOT EXISTS public.club_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  club_id uuid REFERENCES public.clubs(id) ON DELETE CASCADE,
+  session_id uuid REFERENCES public.cooking_sessions(id) ON DELETE CASCADE,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS club_sessions_unique
+  ON public.club_sessions (club_id, session_id);

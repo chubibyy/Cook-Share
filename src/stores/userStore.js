@@ -1,6 +1,7 @@
 // src/stores/userStore.js
 import { create } from 'zustand'
 import { supabase, supabaseHelpers } from '../services/supabase'
+import { formatTimeAgo } from '../utils/helpers'
 import { useAuthStore } from './authStore'
 
 

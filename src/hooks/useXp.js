@@ -1,6 +1,6 @@
 // src/hooks/useXP.js
 import { useMemo } from 'react'
-import { getLevelFromXP, getProgressToNextLevel } from '../utils/constants'
+import { getLevelFromXP, getProgressToNextLevel, LEVELS } from '../utils/constants'
 
 export const useXP = (xp = 0) => {
   const levelInfo = useMemo(() => {

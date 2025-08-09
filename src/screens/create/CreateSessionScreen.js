@@ -1,5 +1,5 @@
 // src/screens/create/CreateSessionScreen.js
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -18,10 +18,13 @@ import { Button, Input, Badge } from '../../components/common'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useAuthStore } from '../../stores/authStore'
 import { supabaseHelpers } from '../../services/supabase'
+import { clubsService } from '../../services/clubs'
+import { useClubStore } from '../../stores/clubStore'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, CUISINE_TYPES, DIFFICULTY_LEVELS } from '../../utils/constants'
 
-const CreateSessionScreen = ({ navigation }) => {
+const CreateSessionScreen = ({ navigation, route }) => {
   const { createSession, loading } = useSessionStore()
+  const { clubs, loadClubs } = useClubStore()
   const { user } = useAuthStore()
 
   // État du formulaire
@@ -33,8 +36,13 @@ const CreateSessionScreen = ({ navigation }) => {
     cuisine_types: [], // Changed to array for multi-select
     difficulty: 1,
     tags: [],
-    club_id: null
+    club_ids: [] // multi-clubs
   })
+  // Charger les clubs de l'utilisateur pour la sélection
+  useEffect(() => {
+    loadClubs()
+  }, [loadClubs])
+
   
   const [currentIngredient, setCurrentIngredient] = useState('')
   const [currentTag, setCurrentTag] = useState('')
@@ -230,6 +238,16 @@ const CreateSessionScreen = ({ navigation }) => {
       const result = await createSession(sessionData)
 
       if (result.success) {
+        // Attacher la session aux clubs choisis
+        try {
+          const selectedClubIds = formData.club_ids
+          if (selectedClubIds.length > 0) {
+            await clubsService.attachSessionToClubs(result.session.id, selectedClubIds)
+          }
+        } catch (attachErr) {
+          console.error('Attach clubs failed:', attachErr)
+        }
+
         Alert.alert(
           'Succès !',
           'Votre création a été partagée avec succès !',
@@ -248,7 +266,7 @@ const CreateSessionScreen = ({ navigation }) => {
                   cuisine_types: [],
                   difficulty: 1,
                   tags: [],
-                  club_id: null
+                  club_ids: []
                 })
               }
             }
@@ -468,6 +486,34 @@ const CreateSessionScreen = ({ navigation }) => {
               </View>
             )}
           </View>
+
+          {/* Partager aussi dans vos clubs */}
+          <View style={styles.section}>
+            <Text style={styles.inputLabel}>👥 Partager aussi dans vos clubs ?</Text>
+            <View style={styles.chipContainer}>
+              {clubs.map((club) => {
+                const selected = formData.club_ids.includes(club.id)
+                return (
+                  <TouchableOpacity
+                    key={club.id}
+                    style={[styles.clubChip, selected && styles.clubChipActive]}
+                    onPress={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        club_ids: selected
+                          ? prev.club_ids.filter((id) => id !== club.id)
+                          : [...prev.club_ids, club.id],
+                      }))
+                    }}
+                  >
+                    <Text style={[styles.clubChipText, selected && styles.clubChipTextActive]}>
+                      {club.name}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
         </ScrollView>
 
         {/* Footer avec bouton */}
@@ -668,6 +714,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: SPACING.xs,
     marginTop: SPACING.sm,
+  },
+  clubChip: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  clubChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  clubChipText: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.sizes.sm,
+  },
+  clubChipTextActive: {
+    color: COLORS.white,
   },
   ingredientChip: {
     flexDirection: 'row',

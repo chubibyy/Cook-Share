@@ -1,6 +1,7 @@
 // src/stores/challengeStore.js
 import { create } from 'zustand'
 import { challengesService } from '../services/challenges'
+import { supabase } from '../services/supabase'
 import { useAuthStore } from './authStore'
 
 

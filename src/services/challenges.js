@@ -1,6 +1,18 @@
 // src/services/challenges.js
 import { supabase } from './supabase'
-import { calculateTimeLeft } from '../utils/helpers'
+
+// Local util to avoid missing export; mirrors usage elsewhere
+const calculateTimeLeft = (endDate) => {
+  const end = new Date(endDate)
+  const now = new Date()
+  const diffTime = end - now
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  if (diffDays <= 0) return 'Terminé'
+  if (diffDays === 1) return '1 jour'
+  if (diffDays < 7) return `${diffDays} jours`
+  if (diffDays < 30) return `${Math.ceil(diffDays / 7)} sem.`
+  return `${Math.ceil(diffDays / 30)} mois`
+}
 
 export const challengesService = {
   // Récupérer les challenges avec statut utilisateur
@@ -13,7 +25,7 @@ export const challengesService = {
           participants:challenge_participants(count),
           user_participation:challenge_participants(*)
         `)
-        .order('created_at', { ascending: false })
+        .order('start_date', { ascending: false })
 
       // Filtrer par statut
       const now = new Date().toISOString()

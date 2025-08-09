@@ -27,6 +27,8 @@ export const calculateLevel = (xp) => {
   return 1
 }
 
+import { LEVELS } from './constants'
+
 export const getXpForNextLevel = (currentXp) => {
   const level = calculateLevel(currentXp)
   if (level === 5) return 0 // Max level

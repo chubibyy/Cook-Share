@@ -18,6 +18,7 @@ export const COLORS = {
   
   // Couleurs neutres - Palette grise moderne
   background: '#F8F9FA',     // Background principal très doux
+  backgroundSecondary: '#F1F5F9', // Arrière-plan secondaire (chips, placeholders)
   surface: '#FFFFFF',        // Cards et surfaces
   surfaceElevated: '#FFFFFF', // Cards avec élévation
   

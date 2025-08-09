@@ -20,27 +20,27 @@ const ClubCard = ({
   ...props
 }) => {
   const isMember = club.userMembership?.role !== undefined
-  const isAdmin = club.userMembership?.role === 'admin'
+  const isAdmin = club.userMembership?.role === 'admin' || club.userMembership?.role === 'owner'
   const isPrivate = club.is_private
 
   const getMembershipBadgeText = () => {
-    if (isAdmin) return '👑 Admin'
+    if (club.userMembership?.role === 'owner') return '👑 Owner'
+    if (isAdmin) return '🛡️ Admin'
     if (isMember) return '✅ Membre'
     return null
   }
 
   const getJoinButtonText = () => {
+    if (club.userMembership?.role === 'owner') return 'Propriétaire'
     if (isMember) return 'Quitter'
     if (isPrivate) return 'Demander'
     return 'Rejoindre'
   }
 
   const handleActionPress = () => {
-    if (isMember) {
-      onLeave?.(club.id)
-    } else {
-      onJoin?.(club.id)
-    }
+    if (club.userMembership?.role === 'owner') return
+    if (isMember) onLeave?.(club.id)
+    else onJoin?.(club.id)
   }
 
   return (
@@ -170,6 +170,7 @@ const ClubCard = ({
             variant={isMember ? "outline" : "primary"}
             size="small"
             onPress={handleActionPress}
+            disabled={club.userMembership?.role === 'owner'}
             style={styles.actionButton}
           />
         </View>

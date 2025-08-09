@@ -4,7 +4,7 @@ import { Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import { useNotificationStore } from '../stores/notificationStore'
 
-export const useNotifications = () => {
+export const useNotifications = (navigation) => {
   const [expoPushToken, setExpoPushToken] = useState('')
   const [notification, setNotification] = useState(false)
   const { loadNotifications, markAsRead, markAllAsRead } = useNotificationStore()
@@ -69,13 +69,13 @@ export const useNotifications = () => {
     // Naviguer selon le type de notification
     if (data.type === 'like' || data.type === 'comment') {
       // Naviguer vers la session
-      navigation.navigate('SessionDetail', { sessionId: data.sessionId })
+      navigation?.navigate?.('SessionDetail', { sessionId: data.sessionId })
     } else if (data.type === 'challenge') {
       // Naviguer vers le challenge
-      navigation.navigate('ChallengeDetail', { challengeId: data.challengeId })
+      navigation?.navigate?.('ChallengeDetail', { challengeId: data.challengeId })
     } else if (data.type === 'follow') {
       // Naviguer vers le profil
-      navigation.navigate('UserProfile', { userId: data.userId })
+      navigation?.navigate?.('UserProfile', { userId: data.userId })
     }
   }
 
