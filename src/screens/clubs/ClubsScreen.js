@@ -8,7 +8,7 @@ import Button from '../../components/common/Button'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
 
 export const ClubsScreen = ({ navigation }) => {
-  const { clubs, loading, error, loadClubs, joinClub, leaveClub } = useClubStore()
+  const { clubs, loading, error, loadClubs, joinClub, leaveClub, requestToJoinClub } = useClubStore()
   const user = useAuthStore((s) => s.user)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -33,12 +33,40 @@ export const ClubsScreen = ({ navigation }) => {
     if (!res.success) Alert.alert('Erreur', res.error)
   }
 
+  const handleRequestJoin = async (clubId) => {
+    if (!user) return Alert.alert('Connexion requise', 'Veuillez vous connecter pour demander à rejoindre un club')
+    const res = await requestToJoinClub(clubId)
+    if (res.success) {
+      Alert.alert('Demande envoyée', 'Votre demande d\'adhésion a été envoyée au propriétaire du club')
+    } else {
+      Alert.alert('Erreur', res.error)
+    }
+  }
+
+  const handleShowPendingRequest = (club, requestStatus) => {
+    if (requestStatus?.status === 'pending') {
+      Alert.alert(
+        '⏳ Demande en attente',
+        `Votre demande d'adhésion au club "${club.name}" a été envoyée au propriétaire.\n\nVous recevrez une notification une fois qu'elle sera traitée.\n\nDemande envoyée le ${new Date(requestStatus.requested_at).toLocaleDateString('fr-FR')}`,
+        [{ text: 'OK', style: 'default' }]
+      )
+    } else if (requestStatus?.status === 'rejected') {
+      Alert.alert(
+        '❌ Demande refusée',
+        `Votre demande d'adhésion au club "${club.name}" a été refusée par le propriétaire.`,
+        [{ text: 'OK', style: 'default' }]
+      )
+    }
+  }
+
   const renderItem = ({ item }) => (
     <ClubCard
       club={item}
       onPress={(club) => navigation.navigate('ClubDetail', { clubId: club.id })}
       onJoin={handleJoin}
       onLeave={handleLeave}
+      onRequestJoin={handleRequestJoin}
+      onShowPendingRequest={handleShowPendingRequest}
       style={styles.card}
     />
   )

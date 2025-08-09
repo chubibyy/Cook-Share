@@ -397,6 +397,157 @@ export const clubsService = {
       console.error('Erreur suppression club:', error)
       throw error
     }
+  },
+
+  // Demander à rejoindre un club privé
+  async requestToJoin(clubId, userId) {
+    try {
+      // Vérifier si une demande existe déjà
+      const { data: existingRequest, error: checkError } = await supabase
+        .from('club_join_requests')
+        .select('*')
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') throw checkError
+      
+      if (existingRequest) {
+        throw new Error('Vous avez déjà une demande en attente pour ce club')
+      }
+
+      // Créer la demande
+      const { data, error } = await supabase
+        .from('club_join_requests')
+        .insert([{
+          club_id: clubId,
+          user_id: userId,
+          status: 'pending',
+          requested_at: new Date().toISOString()
+        }])
+        .select('*')
+
+      if (error) throw error
+      return data[0]
+    } catch (error) {
+      console.error('Erreur demande adhésion:', error)
+      throw error
+    }
+  },
+
+  // Récupérer les demandes d'adhésion pour un club (propriétaire seulement)
+  async getClubJoinRequests(clubId, userId) {
+    try {
+      // Vérifier que l'utilisateur est propriétaire
+      const { data: membership, error: membershipError } = await supabase
+        .from('club_members')
+        .select('role')
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+        .single()
+
+      if (membershipError) throw membershipError
+      if (!membership || membership.role !== 'owner') {
+        throw new Error('Seul le propriétaire peut voir les demandes d\'adhésion')
+      }
+
+      // Récupérer les demandes en attente
+      const { data, error } = await supabase
+        .from('club_join_requests')
+        .select(`
+          *,
+          user:users(id, username, avatar_url, xp)
+        `)
+        .eq('club_id', clubId)
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false })
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Erreur récupération demandes:', error)
+      throw error
+    }
+  },
+
+  // Approuver ou refuser une demande d'adhésion
+  async handleJoinRequest(requestId, action, userId) {
+    try {
+      // Récupérer la demande avec les infos du club
+      const { data: request, error: requestError } = await supabase
+        .from('club_join_requests')
+        .select(`
+          *,
+          club:clubs(*)
+        `)
+        .eq('id', requestId)
+        .single()
+
+      if (requestError) throw requestError
+
+      // Vérifier que l'utilisateur est propriétaire du club
+      const { data: membership, error: membershipError } = await supabase
+        .from('club_members')
+        .select('role')
+        .eq('club_id', request.club_id)
+        .eq('user_id', userId)
+        .single()
+
+      if (membershipError) throw membershipError
+      if (!membership || membership.role !== 'owner') {
+        throw new Error('Seul le propriétaire peut gérer les demandes')
+      }
+
+      if (action === 'approve') {
+        // Ajouter l'utilisateur au club
+        await supabase
+          .from('club_members')
+          .insert([{
+            club_id: request.club_id,
+            user_id: request.user_id,
+            role: 'member'
+          }])
+      }
+
+      // Mettre à jour le statut de la demande
+      const { error: updateError } = await supabase
+        .from('club_join_requests')
+        .update({
+          status: action === 'approve' ? 'approved' : 'rejected',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+
+      if (updateError) throw updateError
+      return true
+    } catch (error) {
+      console.error('Erreur traitement demande:', error)
+      throw error
+    }
+  },
+
+  // Vérifier le statut d'une demande d'adhésion
+  async getJoinRequestStatus(clubId, userId) {
+    try {
+      const { data, error } = await supabase
+        .from('club_join_requests')
+        .select('status, requested_at')
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+        .order('requested_at', { ascending: false })
+        .limit(1)
+
+      if (error && error.code !== 'PGRST116') throw error
+      return data?.[0] || null
+    } catch (error) {
+      // Si la table n'existe pas, retourner null silencieusement
+      if (error.code === '42P01') {
+        console.warn('Table club_join_requests does not exist yet')
+        return null
+      }
+      console.error('Erreur vérification statut demande:', error)
+      throw error
+    }
   }
 }
 

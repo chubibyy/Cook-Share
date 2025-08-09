@@ -26,11 +26,13 @@ export const ClubDetailScreen = ({ navigation }) => {
     subscribeToChat,
     unsubscribeFromChat,
     deleteClub,
+    checkJoinRequestStatus,
   } = useClubStore()
 
   const { toggleLike, toggleSave } = useSessionStore()
 
   const [tab, setTab] = useState('feed') // 'feed' | 'chat'
+  const [joinRequestStatus, setJoinRequestStatus] = useState(null)
   const [message, setMessage] = useState('')
   const [refreshing, setRefreshing] = useState(false)
 
@@ -38,6 +40,13 @@ export const ClubDetailScreen = ({ navigation }) => {
     loadClubById(clubId)
     loadClubFeed(clubId, true)
   }, [clubId, loadClubById, loadClubFeed])
+
+  useEffect(() => {
+    // Vérifier le statut de demande d'adhésion si l'utilisateur n'est pas membre d'un club privé
+    if (currentClub?.is_private && !currentClub?.userMembership) {
+      checkJoinRequestStatus(clubId).then(setJoinRequestStatus)
+    }
+  }, [currentClub, clubId, checkJoinRequestStatus])
 
   // Recharger les données quand l'écran reçoit le focus (retour depuis SessionDetail)
   useFocusEffect(
@@ -67,6 +76,13 @@ export const ClubDetailScreen = ({ navigation }) => {
 
   const handleEditClub = () => {
     navigation.navigate('EditClub', { clubId })
+  }
+
+  const handleViewRequests = () => {
+    navigation.navigate('JoinRequests', { 
+      clubId, 
+      clubName: currentClub?.name 
+    })
   }
 
   const handleDeleteClub = () => {
@@ -168,6 +184,34 @@ export const ClubDetailScreen = ({ navigation }) => {
     setMessage('')
   }
 
+  const renderPendingRequestState = () => (
+    <View style={styles.pendingContainer}>
+      <View style={styles.pendingContent}>
+        <Text style={styles.pendingIcon}>⏳</Text>
+        <Text style={styles.pendingTitle}>Demande en attente</Text>
+        <Text style={styles.pendingMessage}>
+          Votre demande d'adhésion au club "{currentClub?.name}" a été envoyée au propriétaire.
+          Vous recevrez une notification une fois qu'elle sera traitée.
+        </Text>
+        <Text style={styles.pendingDate}>
+          Demande envoyée le {new Date(joinRequestStatus?.requested_at).toLocaleDateString('fr-FR')}
+        </Text>
+      </View>
+    </View>
+  )
+
+  const renderRejectedState = () => (
+    <View style={styles.pendingContainer}>
+      <View style={styles.pendingContent}>
+        <Text style={styles.pendingIcon}>❌</Text>
+        <Text style={styles.pendingTitle}>Demande refusée</Text>
+        <Text style={styles.pendingMessage}>
+          Votre demande d'adhésion au club "{currentClub?.name}" a été refusée par le propriétaire.
+        </Text>
+      </View>
+    </View>
+  )
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -197,6 +241,14 @@ export const ClubDetailScreen = ({ navigation }) => {
               </TouchableOpacity>
             )}
             
+            {/* Bouton Demandes pour owner de club privé */}
+            {currentClub?.userMembership?.role === 'owner' && currentClub?.is_private && (
+              <TouchableOpacity onPress={handleViewRequests} style={styles.requestsButton}>
+                <Text style={styles.requestsIcon}>📋</Text>
+                <Text style={styles.requestsText}>Demandes</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Bouton Supprimer pour owner seulement */}
             {currentClub?.userMembership?.role === 'owner' && (
               <TouchableOpacity onPress={handleDeleteClub} style={styles.deleteButton}>
@@ -228,7 +280,12 @@ export const ClubDetailScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {tab === 'feed' ? (
+        {/* Afficher l'état de demande en attente si applicable */}
+        {currentClub?.is_private && !currentClub?.userMembership && joinRequestStatus?.status === 'pending' ? (
+          renderPendingRequestState()
+        ) : currentClub?.is_private && !currentClub?.userMembership && joinRequestStatus?.status === 'rejected' ? (
+          renderRejectedState()
+        ) : tab === 'feed' ? (
           <FlatList
             data={clubFeed}
             renderItem={renderFeedItem}
@@ -351,6 +408,24 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: TYPOGRAPHY.weights.semibold
   },
+  requestsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.info,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.base,
+    ...SHADOWS.small
+  },
+  requestsIcon: {
+    fontSize: 16,
+    marginRight: SPACING.xs
+  },
+  requestsText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.semibold
+  },
   membershipButton: {
     backgroundColor: COLORS.backgroundSecondary,
     paddingHorizontal: SPACING.md,
@@ -403,6 +478,42 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, backgroundColor: COLORS.backgroundSecondary, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.base, color: COLORS.text },
   chatSend: { marginLeft: SPACING.sm, backgroundColor: COLORS.primary, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.base },
   chatSendText: { color: COLORS.white, fontWeight: TYPOGRAPHY.weights.bold },
+  pendingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  pendingContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    ...SHADOWS.base,
+  },
+  pendingIcon: {
+    fontSize: 64,
+    marginBottom: SPACING.lg,
+  },
+  pendingTitle: {
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+    textAlign: 'center',
+  },
+  pendingMessage: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: TYPOGRAPHY.lineHeights.relaxed,
+    marginBottom: SPACING.md,
+  },
+  pendingDate: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+  },
 })
 
 export default ClubDetailScreen

@@ -1,5 +1,5 @@
 // src/components/cards/ClubCard.js
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { 
   View, 
   Text, 
@@ -9,6 +9,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Avatar, Badge, Button } from '../common'
+import { useClubStore } from '../../stores/clubStore'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
 
 const ClubCard = ({
@@ -16,12 +17,22 @@ const ClubCard = ({
   onPress,
   onJoin,
   onLeave,
+  onRequestJoin,
+  onShowPendingRequest,
   style,
   ...props
 }) => {
+  const { checkJoinRequestStatus } = useClubStore()
+  const [requestStatus, setRequestStatus] = useState(null)
   const isMember = club.userMembership?.role !== undefined
   const isAdmin = club.userMembership?.role === 'admin' || club.userMembership?.role === 'owner'
   const isPrivate = club.is_private
+
+  useEffect(() => {
+    if (isPrivate && !isMember) {
+      checkJoinRequestStatus(club.id).then(setRequestStatus)
+    }
+  }, [club.id, isPrivate, isMember, checkJoinRequestStatus])
 
   const getMembershipBadgeText = () => {
     if (club.userMembership?.role === 'owner') return '👑 Owner'
@@ -33,20 +44,41 @@ const ClubCard = ({
   const getJoinButtonText = () => {
     if (club.userMembership?.role === 'owner') return 'Propriétaire'
     if (isMember) return 'Quitter'
-    if (isPrivate) return 'Demander'
+    if (isPrivate) {
+      if (requestStatus?.status === 'pending') return 'En attente...'
+      if (requestStatus?.status === 'rejected') return 'Refusé'
+      return 'Demander'
+    }
     return 'Rejoindre'
   }
 
   const handleActionPress = () => {
     if (club.userMembership?.role === 'owner') return
-    if (isMember) onLeave?.(club.id)
-    else onJoin?.(club.id)
+    if (isMember) {
+      onLeave?.(club.id)
+    } else if (isPrivate) {
+      if (requestStatus?.status === 'pending' || requestStatus?.status === 'rejected') return
+      onRequestJoin?.(club.id)
+    } else {
+      onJoin?.(club.id)
+    }
+  }
+
+  const handleCardPress = () => {
+    // Si l'utilisateur a une demande en attente ou refusée, afficher le popup au lieu d'ouvrir le détail
+    if (isPrivate && !isMember && requestStatus?.status === 'pending') {
+      onShowPendingRequest?.(club, requestStatus)
+    } else if (isPrivate && !isMember && requestStatus?.status === 'rejected') {
+      onShowPendingRequest?.(club, requestStatus)
+    } else {
+      onPress?.(club)
+    }
   }
 
   return (
     <TouchableOpacity 
       style={[styles.clubCard, style]} 
-      onPress={() => onPress?.(club)}
+      onPress={handleCardPress}
       activeOpacity={0.9}
       {...props}
     >
@@ -82,9 +114,23 @@ const ClubCard = ({
           </View>
         )}
         
+        {/* Badge de demande en attente/refusée */}
+        {isPrivate && !isMember && requestStatus && (
+          <View style={styles.requestStatusBadge}>
+            <Badge 
+              text={requestStatus.status === 'pending' ? '⏳ En attente' : '❌ Refusé'} 
+              variant={requestStatus.status === 'pending' ? "warning" : "error"}
+              size="small"
+            />
+          </View>
+        )}
+
         {/* Badge membership */}
         {getMembershipBadgeText() && (
-          <View style={styles.membershipBadge}>
+          <View style={[
+            styles.membershipBadge,
+            (isPrivate && !isMember && requestStatus) && styles.membershipBadgeShifted
+          ]}>
             <Badge 
               text={getMembershipBadgeText()} 
               variant={isAdmin ? "warning" : "success"}
@@ -211,10 +257,18 @@ const styles = StyleSheet.create({
     top: SPACING.sm,
     left: SPACING.sm,
   },
+  requestStatusBadge: {
+    position: 'absolute',
+    top: SPACING.sm,
+    right: SPACING.sm,
+  },
   membershipBadge: {
     position: 'absolute',
     top: SPACING.sm,
     right: SPACING.sm,
+  },
+  membershipBadgeShifted: {
+    top: SPACING.sm * 2 + 30, // Décaler vers le bas si badge de demande présent
   },
   clubAvatarContainer: {
     position: 'absolute',

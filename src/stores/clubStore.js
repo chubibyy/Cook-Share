@@ -14,6 +14,8 @@ export const useClubStore = create((set, get) => ({
   clubFeedHasMore: true,
   chatMessages: [],
   chatSubscription: null,
+  joinRequests: [],
+  requestsLoading: false,
 
   // Helpers
   setLoading: (loading) => set({ loading }),
@@ -196,6 +198,91 @@ export const useClubStore = create((set, get) => ({
       console.error('Erreur suppression club:', err)
       set({ error: err.message, loading: false })
       throw err
+    }
+  },
+
+  // Demander à rejoindre un club privé
+  requestToJoinClub: async (clubId) => {
+    try {
+      set({ loading: true, error: null })
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      const request = await clubsService.requestToJoin(clubId, userId)
+      
+      // Mettre à jour l'état local du club
+      const { clubs } = get()
+      const updatedClubs = clubs.map(club => {
+        if (club.id === clubId) {
+          return { ...club, userJoinRequest: { status: 'pending' } }
+        }
+        return club
+      })
+      
+      set({ clubs: updatedClubs, loading: false })
+      return { success: true, request }
+    } catch (err) {
+      console.error('Erreur demande adhésion:', err)
+      set({ error: err.message, loading: false })
+      return { success: false, error: err.message }
+    }
+  },
+
+  // Récupérer les demandes d'adhésion (propriétaire)
+  loadJoinRequests: async (clubId) => {
+    try {
+      set({ requestsLoading: true, error: null })
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      const requests = await clubsService.getClubJoinRequests(clubId, userId)
+      set({ joinRequests: requests, requestsLoading: false })
+      return requests
+    } catch (err) {
+      console.error('Erreur chargement demandes:', err)
+      set({ error: err.message, requestsLoading: false })
+      throw err
+    }
+  },
+
+  // Approuver/refuser une demande
+  handleJoinRequest: async (requestId, action) => {
+    try {
+      set({ requestsLoading: true, error: null })
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      await clubsService.handleJoinRequest(requestId, action, userId)
+      
+      // Retirer la demande de la liste locale
+      const { joinRequests } = get()
+      const updatedRequests = joinRequests.filter(req => req.id !== requestId)
+      set({ joinRequests: updatedRequests, requestsLoading: false })
+      
+      return { success: true }
+    } catch (err) {
+      console.error('Erreur traitement demande:', err)
+      set({ error: err.message, requestsLoading: false })
+      return { success: false, error: err.message }
+    }
+  },
+
+  // Vérifier le statut d'une demande
+  checkJoinRequestStatus: async (clubId) => {
+    try {
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) return null
+
+      const status = await clubsService.getJoinRequestStatus(clubId, userId)
+      return status
+    } catch (err) {
+      // Si la table n'existe pas, retourner null silencieusement
+      if (err.code === '42P01') {
+        console.warn('Table club_join_requests does not exist yet')
+        return null
+      }
+      console.error('Erreur vérification statut:', err)
+      return null
     }
   },
 }))
