@@ -18,6 +18,7 @@ export const useClubStore = create((set, get) => ({
   chatPollingActive: false,
   joinRequests: [],
   requestsLoading: false,
+  clubMembers: [],
 
   // Helpers
   setLoading: (loading) => set({ loading }),
@@ -386,6 +387,45 @@ export const useClubStore = create((set, get) => ({
       }
       console.error('Erreur vérification statut:', err)
       return null
+    }
+  },
+
+  // Récupérer les membres d'un club (propriétaire)
+  loadClubMembers: async (clubId) => {
+    try {
+      set({ loading: true, error: null })
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      const members = await clubsService.getClubMembers(clubId, userId)
+      set({ clubMembers: members, loading: false })
+      return members
+    } catch (err) {
+      console.error('Erreur chargement membres:', err)
+      set({ error: err.message, loading: false })
+      throw err
+    }
+  },
+
+  // Révoquer un membre
+  revokeMember: async (clubId, memberUserId) => {
+    try {
+      set({ loading: true, error: null })
+      const userId = useAuthStore.getState().user?.id
+      if (!userId) throw new Error('Utilisateur non connecté')
+
+      await clubsService.revokeMember(clubId, memberUserId, userId)
+      
+      // Mettre à jour la liste des membres localement
+      const { clubMembers } = get()
+      const updatedMembers = clubMembers.filter(member => member.user_id !== memberUserId)
+      set({ clubMembers: updatedMembers, loading: false })
+      
+      return { success: true }
+    } catch (err) {
+      console.error('Erreur révocation membre:', err)
+      set({ error: err.message, loading: false })
+      return { success: false, error: err.message }
     }
   },
 }))

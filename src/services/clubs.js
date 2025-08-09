@@ -593,6 +593,76 @@ export const clubsService = {
       console.error('Erreur vérification statut demande:', error)
       throw error
     }
+  },
+
+  // Récupérer la liste des membres d'un club (propriétaire seulement)
+  async getClubMembers(clubId, userId) {
+    try {
+      // Vérifier que l'utilisateur est propriétaire
+      const { data: membership, error: membershipError } = await supabase
+        .from('club_members')
+        .select('role')
+        .eq('club_id', clubId)
+        .eq('user_id', userId)
+        .single()
+
+      if (membershipError) throw membershipError
+      if (!membership || membership.role !== 'owner') {
+        throw new Error('Seul le propriétaire peut voir la liste des membres')
+      }
+
+      // Récupérer tous les membres avec leurs infos
+      const { data, error } = await supabase
+        .from('club_members')
+        .select(`
+          *,
+          user:users(id, username, avatar_url, xp, cooking_level, created_at)
+        `)
+        .eq('club_id', clubId)
+        .order('joined_at', { ascending: false })
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Erreur récupération membres:', error)
+      throw error
+    }
+  },
+
+  // Révoquer un membre (propriétaire seulement)
+  async revokeMember(clubId, memberUserId, ownerUserId) {
+    try {
+      // Vérifier que l'utilisateur est propriétaire
+      const { data: membership, error: membershipError } = await supabase
+        .from('club_members')
+        .select('role')
+        .eq('club_id', clubId)
+        .eq('user_id', ownerUserId)
+        .single()
+
+      if (membershipError) throw membershipError
+      if (!membership || membership.role !== 'owner') {
+        throw new Error('Seul le propriétaire peut révoquer des membres')
+      }
+
+      // Empêcher l'auto-révocation
+      if (memberUserId === ownerUserId) {
+        throw new Error('Vous ne pouvez pas vous révoquer vous-même')
+      }
+
+      // Supprimer le membre du club
+      const { error } = await supabase
+        .from('club_members')
+        .delete()
+        .eq('club_id', clubId)
+        .eq('user_id', memberUserId)
+
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Erreur révocation membre:', error)
+      throw error
+    }
   }
 }
 

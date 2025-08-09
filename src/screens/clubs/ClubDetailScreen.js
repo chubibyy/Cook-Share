@@ -159,6 +159,14 @@ export const ClubDetailScreen = ({ navigation }) => {
     })
   }
 
+  const handleViewMembers = () => {
+    setShowOwnerMenu(false)
+    navigation.navigate('ClubMembers', { 
+      clubId, 
+      clubName: currentClub?.name 
+    })
+  }
+
   const handleEditFromMenu = () => {
     setShowOwnerMenu(false)
     handleEditClub()
@@ -342,6 +350,11 @@ export const ClubDetailScreen = ({ navigation }) => {
           <TouchableOpacity style={styles.menuItem} onPress={handleEditFromMenu}>
             <Text style={styles.menuIcon}>✏️</Text>
             <Text style={styles.menuText}>Éditer le club</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleViewMembers}>
+            <Text style={styles.menuIcon}>👥</Text>
+            <Text style={styles.menuText}>Gérer les membres</Text>
           </TouchableOpacity>
           
           {currentClub?.is_private && (
