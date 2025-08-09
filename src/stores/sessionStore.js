@@ -269,3 +269,26 @@ export const useSessionStore = create((set, get) => ({
   }
 }))
 
+// Met à jour l'XP des sessions du user courant lorsque son XP change
+useAuthStore.subscribe(
+  (state) => state.user?.xp,
+  (xp) => {
+    const userId = useAuthStore.getState().user?.id
+    if (!userId) return
+
+    const { sessions, currentSession } = useSessionStore.getState()
+
+    const updatedSessions = sessions.map(session =>
+      session.user_id === userId
+        ? { ...session, user: { ...session.user, xp } }
+        : session
+    )
+
+    const updatedCurrent = currentSession && currentSession.user_id === userId
+      ? { ...currentSession, user: { ...currentSession.user, xp } }
+      : currentSession
+
+    useSessionStore.setState({ sessions: updatedSessions, currentSession: updatedCurrent })
+  }
+)
+

@@ -11,7 +11,7 @@ export const sessionsService = {
         .from('cooking_sessions')
         .select(`
           *,
-          user:users(username, avatar_url, cooking_level)
+          user:users(username, avatar_url, xp, cooking_level)
         `)
         .order('created_at', { ascending: false })
         .range(page * limit, (page + 1) * limit - 1)
@@ -90,7 +90,8 @@ export const sessionsService = {
         user: {
           username: session.user?.username,
           avatar_url: session.user?.avatar_url,
-          cooking_level: session.user?.cooking_level
+          cooking_level: session.user?.cooking_level,
+          xp: session.user?.xp
         },
         likesCount: likeCountMap[session.id] || 0,
         commentsCount: commentCountMap[session.id] || 0,
@@ -132,7 +133,7 @@ export const sessionsService = {
         .from('cooking_sessions')
         .select(`
           *,
-          user:users(username, avatar_url, cooking_level)
+          user:users(username, avatar_url, xp, cooking_level)
         `)
         .eq('id', sessionId)
         .single()
@@ -197,7 +198,8 @@ export const sessionsService = {
         user: {
           username: session.user?.username,
           avatar_url: session.user?.avatar_url,
-          cooking_level: session.user?.cooking_level
+          cooking_level: session.user?.cooking_level,
+          xp: session.user?.xp
         },
         likesCount: likesCount || 0,
         commentsCount: comments?.length || 0,
