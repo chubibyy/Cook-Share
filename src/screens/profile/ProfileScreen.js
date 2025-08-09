@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
+import { useChallengeStore } from '../../stores/challengeStore';
 import { usersService } from '../../services/users';
 import { supabase } from '../../services/supabase';
 import { SessionCard } from '../../components/cards/SessionCard';
@@ -21,6 +22,7 @@ import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/consta
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, signOut, loading: authLoading, isInitialized: authInitialized } = useAuthStore();
+  const { userStats, loadUserStats } = useChallengeStore();
   const [sessions, setSessions] = useState([]);
   const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,7 @@ export const ProfileScreen = ({ navigation }) => {
       setSessions((sessionsData || []).map((s) => ({ ...s, user })));
       const userBadges = await usersService.getUserBadges(user.id);
       setBadges(userBadges);
+      await loadUserStats(user.id);
     } catch (error) {
       console.error('Failed to fetch profile data:', error);
       Alert.alert('Erreur', 'Impossible de charger les données du profil.');
@@ -47,7 +50,7 @@ export const ProfileScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [user?.id, loadUserStats]);
 
   useFocusEffect(
     useCallback(() => {
@@ -75,6 +78,30 @@ export const ProfileScreen = ({ navigation }) => {
 
   const renderSessionItem = ({ item }) => (
     <SessionCard session={item.user ? item : { ...item, user }} />
+  );
+
+  const ChallengeStatsSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>Statistiques Challenges</Text>
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{userStats?.totalXP || 0}</Text>
+          <Text style={styles.statLabel}>XP Total</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{userStats?.completedChallenges || 0}</Text>
+          <Text style={styles.statLabel}>Perso remportés</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{userStats?.clubChallengesWon || 0}</Text>
+          <Text style={styles.statLabel}>Clubs remportés</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{userStats?.currentStreak || 0}</Text>
+          <Text style={styles.statLabel}>Série</Text>
+        </View>
+      </View>
+    </View>
   );
 
   const BadgesSection = () => (
@@ -119,6 +146,7 @@ export const ProfileScreen = ({ navigation }) => {
           <Button title="Modifier le profil" onPress={handleEditProfile} style={styles.editButton} />
           <Button title="Se déconnecter" onPress={handleSignOut} style={styles.signOutButton} variant="outline" />
         </View>
+        <ChallengeStatsSection />
         <BadgesSection />
         <Text style={[styles.sectionTitle, { marginTop: SPACING.lg }]}>Mes Sessions ({sessions.length})</Text>
       </View>
@@ -183,6 +211,27 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   sectionTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.semibold, color: COLORS.text, marginBottom: SPACING.sm },
+  statsRow: { flexDirection: 'row', marginTop: SPACING.sm },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginHorizontal: SPACING.xs,
+    alignItems: 'center',
+    ...SHADOWS.sm,
+  },
+  statNumber: {
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.primary,
+  },
+  statLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
   emptySubtext: { color: COLORS.textMuted, textAlign: 'center', marginTop: SPACING.md },
   badgeImage: { width: 60, height: 60, borderRadius: 30, marginRight: SPACING.md, backgroundColor: COLORS.borderLight },
   emptyProfileContainer: {
