@@ -41,9 +41,10 @@ export const ClubMembersScreen = ({ navigation }) => {
   }
 
   const handleRevokeMember = (member) => {
+    const username = member.user?.username || 'Utilisateur inconnu'
     Alert.alert(
       'Révoquer le membre',
-      `Êtes-vous sûr de vouloir exclure "${member.user.username}" du club ?\n\nCette action est irréversible et le membre devra faire une nouvelle demande pour rejoindre le club.`,
+      `Êtes-vous sûr de vouloir exclure "${username}" du club ?\n\nCette action est irréversible et le membre devra faire une nouvelle demande pour rejoindre le club.`,
       [
         {
           text: 'Annuler',
@@ -54,9 +55,9 @@ export const ClubMembersScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await revokeMember(clubId, member.user_id)
-              if (result.success) {
-                Alert.alert('Membre exclu', `${member.user.username} a été exclu du club.`)
+                const result = await revokeMember(clubId, member.user_id)
+                if (result.success) {
+                  Alert.alert('Membre exclu', `${username} a été exclu du club.`)
               } else {
                 Alert.alert('Erreur', result.error || 'Impossible d\'exclure le membre.')
               }
@@ -91,19 +92,20 @@ export const ClubMembersScreen = ({ navigation }) => {
   const renderMemberItem = ({ item: member }) => {
     const roleBadge = getRoleBadge(member.role)
     const isOwner = member.role === 'owner'
+    const user = member.user || {}
     
     return (
       <View style={styles.memberCard}>
         <View style={styles.memberInfo}>
-          <Avatar
-            source={{ uri: member.user.avatar_url }}
-            name={member.user.username}
-            size="medium"
-            style={styles.memberAvatar}
-          />
+            <Avatar
+              source={user.avatar_url ? { uri: user.avatar_url } : undefined}
+              name={user.username || 'Utilisateur inconnu'}
+              size="medium"
+              style={styles.memberAvatar}
+            />
           <View style={styles.memberDetails}>
             <View style={styles.memberHeader}>
-              <Text style={styles.memberName}>{member.user.username}</Text>
+                <Text style={styles.memberName}>{user.username || 'Utilisateur inconnu'}</Text>
               <View style={[styles.roleBadge, { backgroundColor: roleBadge.color + '20' }]}>
                 <Text style={[styles.roleText, { color: roleBadge.color }]}>
                   {roleBadge.text}
@@ -111,12 +113,12 @@ export const ClubMembersScreen = ({ navigation }) => {
               </View>
             </View>
             
-            <Text style={styles.memberLevel}>
-              {getCookingLevel(member.user.xp)}
-            </Text>
-            <Text style={styles.memberXP}>
-              {member.user.xp} XP
-            </Text>
+              <Text style={styles.memberLevel}>
+                {getCookingLevel(user.xp ?? 0)}
+              </Text>
+              <Text style={styles.memberXP}>
+                {user.xp ?? 0} XP
+              </Text>
             <Text style={styles.memberJoinDate}>
               Membre depuis {new Date(member.joined_at).toLocaleDateString('fr-FR')}
             </Text>
