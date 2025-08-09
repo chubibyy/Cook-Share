@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute } from '@react-navigation/native'
+import { useRoute, useFocusEffect } from '@react-navigation/native'
 import { useClubStore } from '../../stores/clubStore'
+import { useSessionStore } from '../../stores/sessionStore'
 import { SessionCard } from '../../components/cards/SessionCard'
 import Button from '../../components/common/Button'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
@@ -26,6 +27,8 @@ export const ClubDetailScreen = ({ navigation }) => {
     unsubscribeFromChat,
   } = useClubStore()
 
+  const { toggleLike, toggleSave } = useSessionStore()
+
   const [tab, setTab] = useState('feed') // 'feed' | 'chat'
   const [message, setMessage] = useState('')
   const [refreshing, setRefreshing] = useState(false)
@@ -34,6 +37,15 @@ export const ClubDetailScreen = ({ navigation }) => {
     loadClubById(clubId)
     loadClubFeed(clubId, true)
   }, [clubId, loadClubById, loadClubFeed])
+
+  // Recharger les données quand l'écran reçoit le focus (retour depuis SessionDetail)
+  useFocusEffect(
+    useCallback(() => {
+      if (tab === 'feed') {
+        loadClubFeed(clubId, true)
+      }
+    }, [tab, clubId, loadClubFeed])
+  )
 
   useEffect(() => {
     if (tab === 'chat') {
@@ -72,8 +84,35 @@ export const ClubDetailScreen = ({ navigation }) => {
     navigation.navigate('SessionDetail', { sessionId: session.id })
   }
 
-  const handleUserPress = (user) => {
-    navigation.navigate('UserProfileScreen', { userId: user.id })
+  const handleUserPress = (session) => {
+    navigation.navigate('SessionDetail', { sessionId: session.id })
+  }
+
+  const handleLike = async (sessionId) => {
+    try {
+      await toggleLike(sessionId)
+      // Recharger le feed du club pour synchroniser les compteurs
+      await loadClubFeed(clubId, true)
+    } catch (error) {
+      console.error('Error liking session:', error)
+    }
+  }
+
+  const handleSave = async (sessionId) => {
+    try {
+      await toggleSave(sessionId)
+      // Recharger le feed du club pour synchroniser les compteurs
+      await loadClubFeed(clubId, true)
+    } catch (error) {
+      console.error('Error saving session:', error)
+    }
+  }
+
+  const handleComment = (session) => {
+    navigation.navigate('SessionDetail', { 
+      sessionId: session.id, 
+      focusComment: true 
+    })
   }
 
   const renderFeedItem = ({ item }) => (
@@ -81,6 +120,9 @@ export const ClubDetailScreen = ({ navigation }) => {
       session={item}
       onPress={() => handleSessionPress(item)}
       onUserPress={handleUserPress}
+      onLike={handleLike}
+      onSave={handleSave}
+      onComment={handleComment}
     />
   )
 
