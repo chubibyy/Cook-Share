@@ -195,11 +195,13 @@ const ChallengeCard = ({
             <View style={styles.clubsList}>
               {clubParticipations.slice(0, 3).map((participation, index) => (
                 <View key={index} style={styles.clubParticipation}>
-                  <Badge 
-                    text="🏆 Participe" 
-                    variant="success" 
-                    size="small" 
-                  />
+                  <View style={styles.clubInfo}>
+                    <Badge 
+                      text={`🏆 ${participation.club?.name || 'Club sans nom'}`}
+                      variant="success" 
+                      size="small" 
+                    />
+                  </View>
                   {onRemoveClub && (
                     <TouchableOpacity 
                       style={styles.removeClubButton}
@@ -211,9 +213,11 @@ const ChallengeCard = ({
                 </View>
               ))}
               {clubParticipations.length > 3 && (
-                <Text style={styles.moreClubs}>
-                  +{clubParticipations.length - 3} autres
-                </Text>
+                <View style={styles.moreClubsContainer}>
+                  <Text style={styles.moreClubs}>
+                    +{clubParticipations.length - 3} autre{clubParticipations.length - 3 > 1 ? 's' : ''} club{clubParticipations.length - 3 > 1 ? 's' : ''}
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -378,7 +382,14 @@ const styles = StyleSheet.create({
   clubParticipation: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: SPACING.xs,
+    backgroundColor: COLORS.successAlpha,
+    padding: SPACING.sm,
+    borderRadius: RADIUS.sm,
+  },
+  clubInfo: {
+    flex: 1,
   },
   removeClubButton: {
     marginLeft: SPACING.xs,
@@ -393,6 +404,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.error,
     fontWeight: TYPOGRAPHY.weights.bold,
+  },
+  moreClubsContainer: {
+    backgroundColor: COLORS.backgroundSecondary,
+    padding: SPACING.sm,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
   },
   moreClubs: {
     fontSize: TYPOGRAPHY.sizes.xs,

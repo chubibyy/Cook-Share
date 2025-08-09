@@ -166,8 +166,7 @@ export const challengesService = {
       // Inscrire tous les clubs
       const inscriptions = clubIds.map(clubId => ({
         challenge_id: challengeId,
-        club_id: clubId,
-        status: 'en_cours'
+        club_id: clubId
       }))
 
       const { data, error } = await supabase
@@ -395,13 +394,33 @@ export const challengesService = {
         }
       }
 
-      // Créer une map des participations par challenge
+      // Récupérer les informations des clubs participants
+      const participatingClubIds = [...new Set(clubParticipations.map(p => p.club_id))]
+      let participatingClubsMap = {}
+      
+      if (participatingClubIds.length > 0) {
+        const { data: participatingClubsData, error: participatingClubsError } = await supabase
+          .from('clubs')
+          .select('id, name, avatar_url')
+          .in('id', participatingClubIds)
+
+        if (!participatingClubsError && participatingClubsData) {
+          participatingClubsData.forEach(club => {
+            participatingClubsMap[club.id] = club
+          })
+        }
+      }
+
+      // Créer une map des participations par challenge avec infos clubs
       const participationsMap = {}
       clubParticipations.forEach(p => {
         if (!participationsMap[p.challenge_id]) {
           participationsMap[p.challenge_id] = []
         }
-        participationsMap[p.challenge_id].push(p)
+        participationsMap[p.challenge_id].push({
+          ...p,
+          club: participatingClubsMap[p.club_id] || null
+        })
       })
 
       return challenges.map(challenge => ({

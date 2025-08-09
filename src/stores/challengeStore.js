@@ -280,11 +280,15 @@ export const useChallengeStore = create((set, get) => ({
             participantsCount: (challenge.participantsCount || 0) + clubIds.length,
             clubParticipations: [
               ...(challenge.clubParticipations || []),
-              ...clubIds.map(clubId => ({
-                challenge_id: challengeId,
-                club_id: clubId,
-                status: 'en_cours'
-              }))
+              ...clubIds.map(clubId => {
+                // Trouver le club dans la liste des clubs possédés
+                const club = challenge.ownedClubs?.find(c => c.id === clubId)
+                return {
+                  challenge_id: challengeId,
+                  club_id: clubId,
+                  club: club || null
+                }
+              })
             ]
           }
         }
