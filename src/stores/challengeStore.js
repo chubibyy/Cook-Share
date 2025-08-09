@@ -4,6 +4,15 @@ import { challengesService } from '../services/challenges'
 import { supabase } from '../services/supabase'
 import { useAuthStore } from './authStore'
 
+// Helper pour calculer le temps restant
+const calculateTimeLeft = (endDate) => {
+  if (!endDate) return 'N/A'
+  const diff = new Date(endDate).getTime() - new Date().getTime()
+  if (diff <= 0) return 'Terminé'
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+  if (days === 1) return '1 jour'
+  return `${days} jours`
+}
 
 export const useChallengeStore = create((set, get) => ({
   // État
@@ -234,8 +243,8 @@ export const useChallengeStore = create((set, get) => ({
 
       await challengesService.submitChallengeSession(challengeId, userId, sessionId)
 
-      // Mettre à jour les challenges
-      const { challenges, activeChallenges, userChallenges } = get()
+      // Mettre à jour les challenges et le challenge courant
+      const { challenges, activeChallenges, userChallenges, currentChallenge } = get()
       
       const updateChallenge = (challenge) => {
         if (challenge.id === challengeId) {
@@ -251,9 +260,15 @@ export const useChallengeStore = create((set, get) => ({
         return challenge
       }
 
+      const newCurrentChallenge = currentChallenge?.id === challengeId 
+        ? updateChallenge(currentChallenge)
+        : currentChallenge;
+
       set({
         challenges: challenges.map(updateChallenge),
         activeChallenges: activeChallenges.map(updateChallenge),
+        userChallenges: userChallenges.map(updateChallenge),
+        currentChallenge: newCurrentChallenge,
         loading: false
       })
 
@@ -365,7 +380,7 @@ export const useChallengeStore = create((set, get) => ({
   // Obtenir un challenge par ID
   getChallengeById: async (challengeId) => {
     try {
-      set({ loading: true, error: null })
+      set({ loading: true, error: null, currentChallenge: null })
 
       const userId = useAuthStore.getState().user?.id
       
@@ -374,7 +389,6 @@ export const useChallengeStore = create((set, get) => ({
         .select(`
           *,
           participants:challenge_participants(count),
-          user_participation:challenge_participants(*),
           participants_list:challenge_participants(
             *,
             user:users(*),
@@ -382,15 +396,17 @@ export const useChallengeStore = create((set, get) => ({
           )
         `)
         .eq('id', challengeId)
-        .eq('user_participation.user_id', userId)
         .single()
 
       if (error) throw error
 
+      // Trouver la participation de l'utilisateur dans la liste complète
+      const userParticipation = data.participants_list?.find(p => p.user_id === userId) || null
+
       const challenge = {
         ...data,
         participantsCount: data.participants?.[0]?.count || 0,
-        userParticipation: data.user_participation?.[0] || null,
+        userParticipation: userParticipation,
         isActive: new Date(data.end_date) > new Date(),
         timeLeft: calculateTimeLeft(data.end_date)
       }
@@ -402,11 +418,11 @@ export const useChallengeStore = create((set, get) => ({
 
       return challenge
     } catch (error) {
+      console.error("Erreur getChallengeById:", error)
       set({
         error: error.message,
         loading: false
       })
-      throw error
     }
   }
 }))

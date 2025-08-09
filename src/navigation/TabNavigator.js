@@ -96,6 +96,20 @@ const Dummy = () => null; // placeholder pour l’onglet central
 const TabNavigator = () => {
   const { unreadCount } = useNotificationStore();
 
+  const tabScreenListeners = ({ navigation, route }) => ({
+    tabPress: (e) => {
+      const state = navigation.getState();
+      const isFocused = state.routes[state.index].name === route.name;
+
+      if (isFocused) {
+        // If the tab is already focused, reset its stack to the initial route.
+        navigation.navigate(route.name, {
+          screen: `${route.name}Screen` // Assumes root screen is named like 'HomeScreen', 'ChallengesScreen'
+        });
+      }
+    },
+  });
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -113,6 +127,7 @@ const TabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
         }}
+        listeners={tabScreenListeners}
       />
 
       <Tab.Screen
@@ -121,6 +136,7 @@ const TabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => <TabIcon icon="🎯" focused={focused} />,
         }}
+        listeners={tabScreenListeners}
       />
 
       {/* Onglet central -> ouvre la modale CreateSession */}
@@ -138,6 +154,7 @@ const TabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => <TabIcon icon="👥" focused={focused} />,
         }}
+        listeners={tabScreenListeners}
       />
 
       <Tab.Screen
@@ -148,6 +165,7 @@ const TabNavigator = () => {
             <TabIcon icon="👤" focused={focused} badge={unreadCount} />
           ),
         }}
+        listeners={tabScreenListeners}
       />
     </Tab.Navigator>
   );

@@ -295,5 +295,25 @@ export const sessionsService = {
       console.error('Erreur suppression commentaire:', error)
       throw error
     }
+  },
+
+  // Récupérer toutes les sessions d'un utilisateur
+  async getUserSessions(userId) {
+    try {
+      if (!userId) return [];
+
+      const { data, error } = await supabase
+        .from('cooking_sessions')
+        .select('id, title, photo_url, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Erreur récupération sessions utilisateur:', error);
+      throw error;
+    }
   }
 }
