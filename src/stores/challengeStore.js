@@ -273,9 +273,17 @@ export const useChallengeStore = create((set, get) => ({
       })
 
       // Ajouter l'XP à l'utilisateur
-      const challenge = challenges.find(c => c.id === challengeId)
-      if (challenge?.reward_xp) {
-        useAuthStore.getState().addXP(challenge.reward_xp)
+      let challengeForXp = null
+
+      if (currentChallenge?.id === challengeId) {
+        challengeForXp = currentChallenge
+      } else {
+        const allChallenges = [...challenges, ...activeChallenges, ...userChallenges]
+        challengeForXp = allChallenges.find(c => c.id === challengeId)
+      }
+
+      if (challengeForXp?.reward_xp) {
+        useAuthStore.getState().addXP(challengeForXp.reward_xp)
       }
 
       return { success: true }

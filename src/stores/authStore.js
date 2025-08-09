@@ -255,7 +255,7 @@ export const useAuthStore = create(
             .from('users')
             .update({ 
               xp: newXP,
-              last_activity: new Date().toISOString()
+              last_seen: new Date().toISOString()
             })
             .eq('id', user.id)
 
