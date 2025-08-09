@@ -400,6 +400,12 @@ export const useChallengeStore = create((set, get) => ({
 
       if (error) throw error
 
+      // Si c'est un challenge de club, récupérer les clubs du user
+      let ownedClubs = []
+      if (data.is_club_challenge && userId) {
+        ownedClubs = await challengesService.getUserOwnedClubs(userId)
+      }
+
       // Trouver la participation de l'utilisateur dans la liste complète
       const userParticipation = data.participants_list?.find(p => p.user_id === userId) || null
 
@@ -408,7 +414,8 @@ export const useChallengeStore = create((set, get) => ({
         participantsCount: data.participants?.[0]?.count || 0,
         userParticipation: userParticipation,
         isActive: new Date(data.end_date) > new Date(),
-        timeLeft: calculateTimeLeft(data.end_date)
+        timeLeft: calculateTimeLeft(data.end_date),
+        ownedClubs: ownedClubs, // Attacher les clubs possédés
       }
 
       set({

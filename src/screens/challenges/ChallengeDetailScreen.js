@@ -16,11 +16,12 @@ import { useAuthStore } from '../../stores/authStore';
 import Button from '../../components/common/Button';
 import { Avatar } from '../../components/common';
 import { SessionSelectionModal } from '../../components/modals/SessionSelectionModal';
+import { ClubSelectionModal } from '../../components/modals/ClubSelectionModal';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants';
 
 const ChallengeDetailScreen = ({ navigation }) => {
   const route = useRoute();
-  const { challengeId } = route.params;
+  const { challengeId, challengeType } = route.params;
   const user = useAuthStore(s => s.user);
   const {
     currentChallenge,
@@ -28,11 +29,14 @@ const ChallengeDetailScreen = ({ navigation }) => {
     getChallengeById,
     participateInChallenge,
     abandonChallenge,
-    submitChallengeSession
+    submitChallengeSession,
+    participateClubsInChallenge,
+    removeClubFromChallenge
   } = useChallengeStore();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isSessionModalVisible, setIsSessionModalVisible] = useState(false);
+  const [isClubModalVisible, setIsClubModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,7 +53,7 @@ const ChallengeDetailScreen = ({ navigation }) => {
       const result = await participateInChallenge(challengeId, user.id);
       if (result.success) {
         Alert.alert('Participation confirmée', 'Bonne chance pour ce challenge !');
-        getChallengeById(challengeId); // Refresh data
+        getChallengeById(challengeId);
       } else {
         Alert.alert('Erreur', result.error || 'Impossible de participer.');
       }
@@ -76,7 +80,7 @@ const ChallengeDetailScreen = ({ navigation }) => {
               const result = await abandonChallenge(challengeId, user.id);
               if (result.success) {
                 Alert.alert('Challenge abandonné', 'Vous ne participez plus à ce challenge.');
-                getChallengeById(challengeId); // Refresh data
+                getChallengeById(challengeId);
               } else {
                 Alert.alert('Erreur', result.error || 'Impossible d\'abandonner.');
               }
@@ -108,25 +112,46 @@ const ChallengeDetailScreen = ({ navigation }) => {
     }
   };
 
+  const handleManageClubs = async (newlySelectedClubIds) => {
+    if (!currentChallenge) return;
+
+    const originalParticipatingIds = new Set(currentChallenge.clubParticipations?.map(p => p.club_id) || []);
+    const newSelectedIds = new Set(newlySelectedClubIds);
+
+    const clubsToAdd = newlySelectedClubIds.filter(id => !originalParticipatingIds.has(id));
+    const clubsToRemove = Array.from(originalParticipatingIds).filter(id => !newSelectedIds.has(id));
+
+    if (clubsToAdd.length === 0 && clubsToRemove.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const promises = [];
+      if (clubsToAdd.length > 0) {
+        promises.push(participateClubsInChallenge(challengeId, clubsToAdd, user.id));
+      }
+      if (clubsToRemove.length > 0) {
+        clubsToRemove.forEach(clubId => {
+          promises.push(removeClubFromChallenge(challengeId, clubId, user.id));
+        });
+      }
+      await Promise.all(promises);
+      Alert.alert('Succès', 'Les participations des clubs ont été mises à jour.');
+      getChallengeById(challengeId);
+    } catch (error) {
+      Alert.alert('Erreur', 'Une erreur est survenue.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading || !currentChallenge) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator style={{ flex: 1 }} color={COLORS.primary} size="large" />
-      </SafeAreaView>
-    );
+    return <SafeAreaView style={styles.container}><ActivityIndicator style={{ flex: 1 }} color={COLORS.primary} size="large" /></SafeAreaView>;
   }
 
   const { 
-    title, 
-    description, 
-    constraint_text, 
-    reward_xp, 
-    challenge_img, 
-    participantsCount, 
-    timeLeft, 
-    isActive, 
-    userParticipation, 
-    participants_list 
+    title, description, constraint_text, reward_xp, challenge_img, 
+    participantsCount, timeLeft, isActive, userParticipation, 
+    participants_list, ownedClubs, clubParticipations
   } = currentChallenge;
 
   const isParticipating = !!userParticipation;
@@ -134,64 +159,59 @@ const ChallengeDetailScreen = ({ navigation }) => {
 
   const renderActionButton = () => {
     if (!isActive) return <Text style={styles.statusText}>Challenge terminé</Text>;
-    if (isCompleted) {
-        return (
-            <View style={styles.completedContainer}>
-                <Text style={styles.statusText}>✅ Défi réussi !</Text>
-                <Text style={styles.completedText}>Votre participation a été enregistrée.</Text>
-            </View>
-        );
+
+    if (challengeType === 'club') {
+      if (ownedClubs && ownedClubs.length > 0) {
+        return <Button title="Gérer la participation des clubs" onPress={() => setIsClubModalVisible(true)} loading={isSubmitting} />;
+      }
+      return <Text style={styles.statusText}>Seuls les propriétaires de clubs peuvent participer.</Text>;
     }
 
+    if (isCompleted) {
+      return <View style={styles.completedContainer}><Text style={styles.statusText}>✅ Défi réussi !</Text></View>;
+    }
     if (isParticipating) {
       return (
         <View>
-          <Button title="Soumettre ma participation" onPress={() => setIsModalVisible(true)} style={{ marginBottom: SPACING.sm }} loading={isSubmitting} />
+          <Button title="Soumettre ma participation" onPress={() => setIsSessionModalVisible(true)} style={{ marginBottom: SPACING.sm }} loading={isSubmitting} />
           <Button title="Abandonner" variant="outline" onPress={handleAbandon} loading={isSubmitting} />
         </View>
       );
     }
-
     return <Button title="Participer au Challenge" onPress={handleParticipate} loading={isSubmitting} />;
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <SessionSelectionModal 
-        visible={isModalVisible} 
-        onClose={() => setIsModalVisible(false)} 
-        onSelectSession={handleSessionSelected} 
+      <SessionSelectionModal visible={isSessionModalVisible} onClose={() => setIsSessionModalVisible(false)} onSelectSession={handleSessionSelected} />
+      <ClubSelectionModal 
+        visible={isClubModalVisible} 
+        onClose={() => setIsClubModalVisible(false)} 
+        onSelectClubs={handleManageClubs}
+        clubs={ownedClubs || []}
+        participatingClubIds={clubParticipations?.map(p => p.club_id) || []}
+        challenge={currentChallenge}
       />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Text style={styles.backButtonText}>←</Text></TouchableOpacity>
         </View>
-
         <Image source={{ uri: challenge_img }} style={styles.bannerImage} />
-
         <View style={styles.content}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
-
           <View style={styles.infoGrid}>
             <InfoBox label="Temps restant" value={timeLeft} icon="⏰" />
             <InfoBox label="Statut" value={isActive ? 'Actif' : 'Terminé'} icon="⚡️" />
           </View>
-
-          <Section title="📜 Contrainte">
-            <Text style={styles.constraintText}>{constraint_text}</Text>
-          </Section>
-
+          <Section title="📜 Contrainte"><Text style={styles.constraintText}>{constraint_text}</Text></Section>
           <Section title="🏆 Récompenses">
             <View style={styles.rewardsContainer}>
               <RewardItem label="Points d'Expérience" value={`+${reward_xp} XP`} icon="✨" />
               <RewardItem label="Badge à gagner" value="Badge exclusif" icon="🏅" />
             </View>
           </Section>
-
-          <Section title="👥 Participants" subtitle={`${participantsCount || 0} personne${(participantsCount || 0) > 1 ? 's' : ''} participe${(participantsCount || 0) > 1 ? 'nt' : ''}`}>
+          <Section title="👥 Participants" subtitle={`${participantsCount || 0} participant(s)`}>
             <View style={styles.participantsList}>
               {(participants_list || []).slice(0, 5).map(p => (
                 <Avatar key={p.user.id} source={{ uri: p.user.avatar_url }} name={p.user.username} size="medium" style={styles.participantAvatar} />
@@ -201,9 +221,7 @@ const ChallengeDetailScreen = ({ navigation }) => {
           </Section>
         </View>
       </ScrollView>
-      <View style={styles.footer}>
-        {renderActionButton()}
-      </View>
+      <View style={styles.footer}>{renderActionButton()}</View>
     </SafeAreaView>
   );
 };
@@ -294,9 +312,8 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.borderLight,
     ...SHADOWS.lg,
   },
-  statusText: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold, color: COLORS.success, textAlign: 'center' },
+  statusText: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold, color: COLORS.textMuted, textAlign: 'center' },
   completedContainer: { alignItems: 'center' },
-  completedText: { fontSize: TYPOGRAPHY.sizes.sm, color: COLORS.textSecondary, marginTop: 4 },
 });
 
 export default ChallengeDetailScreen;
