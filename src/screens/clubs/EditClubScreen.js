@@ -75,9 +75,25 @@ export const EditClubScreen = ({ navigation }) => {
             <TextInput value={description} onChangeText={setDescription} style={[styles.input, styles.textarea]} placeholder="Description" multiline />
           </View>
 
-          <View style={[styles.field, styles.row]}>            
-            <Text style={styles.label}>Privé</Text>
-            <Switch value={isPrivate} onValueChange={setIsPrivate} />
+          <View style={styles.visibilityField}>
+            <View style={styles.visibilityInfo}>
+              <Text style={styles.label}>Visibilité du club</Text>
+              <Text style={styles.visibilityDescription}>
+                {isPrivate 
+                  ? "Club privé - Les utilisateurs doivent demander à rejoindre" 
+                  : "Club public - Tout le monde peut rejoindre librement"
+                }
+              </Text>
+            </View>
+            <View style={styles.switchContainer}>
+              <Text style={styles.switchLabel}>{isPrivate ? "Privé" : "Public"}</Text>
+              <Switch
+                value={isPrivate}
+                onValueChange={setIsPrivate}
+                thumbColor={isPrivate ? COLORS.primary : COLORS.white}
+                trackColor={{ false: COLORS.backgroundSecondary, true: COLORS.primaryAlpha }}
+              />
+            </View>
           </View>
 
           <View style={styles.actions}>
@@ -103,6 +119,33 @@ const styles = StyleSheet.create({
   label: { fontSize: TYPOGRAPHY.sizes.sm, color: COLORS.textSecondary, marginBottom: SPACING.xs },
   input: { backgroundColor: COLORS.surface, borderRadius: RADIUS.base, borderWidth: 1, borderColor: COLORS.borderLight, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, color: COLORS.text },
   textarea: { minHeight: 100, textAlignVertical: 'top' },
+  visibilityField: {
+    marginVertical: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.base,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  visibilityInfo: {
+    flex: 1,
+    marginBottom: SPACING.sm,
+  },
+  visibilityDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  switchLabel: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.text,
+    fontWeight: TYPOGRAPHY.weights.semibold,
+  },
   actions: { marginTop: SPACING.lg },
 })
 
