@@ -1,23 +1,20 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
 import { useChallengeStore } from '../../stores/challengeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { ChallengeCard } from '../../components/cards/ChallengeCard'
-import { Badge } from '../../components/common'
 import { ClubSelectionModal } from '../../components/modals/ClubSelectionModal'
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/constants'
 
 export const ChallengesScreen = ({ navigation }) => {
-  const { 
-    userChallenges, 
-    clubChallenges, 
-    userStats,
-    loading, 
-    loadUserChallenges, 
+  const {
+    userChallenges,
+    clubChallenges,
+    loading,
+    loadUserChallenges,
     loadClubChallenges,
-    loadUserStats,
     participateInChallenge,
     abandonChallenge,
     participateClubsInChallenge,
@@ -37,7 +34,6 @@ export const ChallengesScreen = ({ navigation }) => {
     if (user?.id) {
       loadUserChallenges(user.id)
       loadClubChallenges(user.id)
-      loadUserStats(user.id)
     }
   }, [user?.id])
 
@@ -48,9 +44,8 @@ export const ChallengesScreen = ({ navigation }) => {
       if (user?.id) {
         loadUserChallenges(user.id)
         loadClubChallenges(user.id)
-        loadUserStats(user.id)
       }
-    }, [user?.id, loadUserChallenges, loadClubChallenges, loadUserStats])
+    }, [user?.id, loadUserChallenges, loadClubChallenges])
   )
 
   const onRefresh = useCallback(async () => {
@@ -59,15 +54,14 @@ export const ChallengesScreen = ({ navigation }) => {
     try {
       await Promise.all([
         loadUserChallenges(user.id),
-        loadClubChallenges(user.id),
-        loadUserStats(user.id)
+        loadClubChallenges(user.id)
       ])
     } catch (error) {
       console.error('Error refreshing challenges:', error)
     } finally {
       setRefreshing(false)
     }
-  }, [user?.id, loadUserChallenges, loadClubChallenges, loadUserStats])
+    }, [user?.id, loadUserChallenges, loadClubChallenges])
 
   const handleParticipate = async (challenge) => {
     if (!user?.id) {
@@ -264,45 +258,6 @@ export const ChallengesScreen = ({ navigation }) => {
     })
   }
 
-  const renderUserStats = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statCard}>
-        <Text style={styles.statNumber}>{userStats?.totalXP || 0}</Text>
-        <Text style={styles.statLabel}>XP Total</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Text style={styles.statNumber}>{userStats?.completedChallenges || 0}</Text>
-        <Text style={styles.statLabel}>Challenges réussis</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Text style={styles.statNumber}>{userStats?.badges || 0}</Text>
-        <Text style={styles.statLabel}>Badges</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Text style={styles.statNumber}>{userStats?.currentStreak || 0}</Text>
-        <Text style={styles.statLabel}>Série actuelle</Text>
-      </View>
-    </View>
-  )
-
-  const renderRecentBadges = () => {
-    if (!userStats?.recentBadges?.length) return null
-    
-    return (
-      <View style={styles.badgesSection}>
-        <Text style={styles.sectionTitle}>🏅 Badges récents</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
-          {userStats.recentBadges.map((badge, index) => (
-            <View key={index} style={styles.badgeItem}>
-              <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
-              <Text style={styles.badgeName}>{badge.name}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    )
-  }
-
   const renderChallengeItem = ({ item: challenge }) => (
     <ChallengeCard
       challenge={challenge}
@@ -375,14 +330,7 @@ export const ChallengesScreen = ({ navigation }) => {
             colors={[COLORS.primary]}
           />
         }
-        ListHeaderComponent={
-          activeTab === 'user' ? (
-            <View>
-              {renderUserStats()}
-              {renderRecentBadges()}
-            </View>
-          ) : null
-        }
+        ListHeaderComponent={null}
         ListEmptyComponent={!loading ? renderEmptyState : null}
         showsVerticalScrollIndicator={false}
       />
@@ -455,61 +403,6 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.xl,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingVertical: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginHorizontal: SPACING.xs,
-    alignItems: 'center',
-    ...SHADOWS.base,
-  },
-  statNumber: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: TYPOGRAPHY.weights.bold,
-    color: COLORS.primary,
-    marginBottom: SPACING.xs,
-  },
-  statLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  badgesSection: {
-    marginBottom: SPACING.lg,
-  },
-  sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  badgesScroll: {
-    paddingVertical: SPACING.sm,
-  },
-  badgeItem: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginRight: SPACING.sm,
-    alignItems: 'center',
-    minWidth: 80,
-    ...SHADOWS.base,
-  },
-  badgeEmoji: {
-    fontSize: 24,
-    marginBottom: SPACING.xs,
-  },
-  badgeName: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,

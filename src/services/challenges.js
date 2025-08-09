@@ -443,6 +443,31 @@ export const challengesService = {
 
       if (monthlyError) throw monthlyError
 
+      // Compter les challenges de club auxquels l'utilisateur a participé via ses clubs
+      const { data: userClubs, error: clubsError } = await supabase
+        .from('club_members')
+        .select('club_id')
+        .eq('user_id', userId)
+
+      if (clubsError) throw clubsError
+
+      let clubChallengesWon = 0
+      const clubIds = userClubs?.map(c => c.club_id) || []
+      if (clubIds.length > 0) {
+        const { data: clubChallenges, error: clubChallengesError } = await supabase
+          .from('club_challenges')
+          .select('challenge:challenges(end_date)')
+          .in('club_id', clubIds)
+
+        if (clubChallengesError) throw clubChallengesError
+
+        const now = new Date()
+        clubChallengesWon = (clubChallenges || []).filter(c => {
+          const end = c.challenge?.end_date ? new Date(c.challenge.end_date) : null
+          return end && end < now
+        }).length
+      }
+
       // Récupérer les badges récents (pour l'exemple, on simule quelques badges)
       const recentBadges = [
         { name: 'Premier challenge', emoji: '🎯' },
@@ -453,6 +478,7 @@ export const challengesService = {
       return {
         totalXP: userProfile?.xp || 0,
         completedChallenges: completedChallenges?.length || 0,
+        clubChallengesWon,
         badges: recentBadges.length,
         currentStreak: monthlyCompleted?.length || 0,
         recentBadges
